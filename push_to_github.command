@@ -13,7 +13,7 @@ echo "=========================================="
 git add .
 
 # Commit with message
-git commit -m "Add Flask backend for Render deployment + Vercel frontend"
+git commit -m "Update project: Bug fixes and improvements"
 
 # Push to GitHub
 git push origin main
@@ -21,4 +21,3 @@ git push origin main
 echo "=========================================="
 echo "Push complete!"
 echo "=========================================="
-

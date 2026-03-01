@@ -607,9 +607,14 @@ document.addEventListener('DOMContentLoaded', () => {
       let macro = (c.grade === 'A+' || c.grade === 'A') ? 85 : (c.grade.includes('B') ? 62 : 38);
 
       // Add precise ML "float" to look like a real live calculation
-      finHealth = Math.max(10, Math.min(100, finHealth + (Math.random() * 6 - 3).toFixed(1)));
-      altRisk = Math.max(10, Math.min(100, altRisk + (Math.random() * 6 - 3).toFixed(1)));
-      macro = Math.max(10, Math.min(100, macro + (Math.random() * 6 - 3).toFixed(1)));
+      finHealth = Math.max(10, Math.min(100, Number(finHealth) + (Math.random() * 6 - 3)));
+      altRisk = Math.max(10, Math.min(100, Number(altRisk) + (Math.random() * 6 - 3)));
+      macro = Math.max(10, Math.min(100, Number(macro) + (Math.random() * 6 - 3)));
+
+      // Format to 1 decimal place
+      finHealth = parseFloat(finHealth.toFixed(1));
+      altRisk = parseFloat(altRisk.toFixed(1));
+      macro = parseFloat(macro.toFixed(1));
 
       if (q('#xaiFinHealth')) q('#xaiFinHealth').textContent = finHealth + '%';
       if (q('#xaiAltRisk')) q('#xaiAltRisk').textContent = altRisk + '%';
