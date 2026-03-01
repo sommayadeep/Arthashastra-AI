@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation | Arthashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .doc-sidebar {
+            position: sticky;
+            top: 100px;
+            height: calc(100vh - 120px);
+            padding-right: 20px;
+            border-right: 1px solid var(--border-gold);
+        }
+
+        .doc-nav {
+            list-style: none;
+            padding: 0;
+        }
+
+        .doc-nav li {
+            margin-bottom: 15px;
+        }
+
+        .doc-nav a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .doc-nav a:hover,
+        .doc-nav a.active {
+            color: var(--imperial-indigo);
+        }
+
+        .doc-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            color: var(--imperial-indigo);
+            margin-bottom: 30px;
+            margin-top: 60px;
+        }
+
+        .doc-content h2:first-child {
+            margin-top: 0;
+        }
+
+        .doc-content p {
+            line-height: 1.8;
+            color: var(--heading-dark);
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #dcdcdc;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body style="background: var(--manuscript-paper);">
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="banking-intelligence.html">Banking News</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <main style="padding: 100px 0;">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: 250px 1fr; gap: 60px;">
+                <aside class="doc-sidebar">
+                    <h4
+                        style="text-transform: uppercase; letter-spacing: 2px; color: var(--antique-gold); margin-bottom: 25px;">
+                        Knowledge Base</h4>
+                    <ul class="doc-nav">
+                        <li><a href="#introduction" class="active">Introduction</a></li>
+                        <li><a href="#risk-architecture">Risk Architecture</a></li>
+                        <li><a href="#dharma-ledger">Dharma Ledger Manual</a></li>
+                        <li><a href="#ai-underwriting">AI Underwriting Meta</a></li>
+                        <li><a href="#security">Security & Sovereignty</a></li>
+                    </ul>
+                </aside>
+
+                <article class="doc-content">
+                    <section id="introduction">
+                        <h2>Introduction to Mauryan Intelligence</h2>
+                        <p>Arthashastra AI is an institutional-grade Credit Intelligence engine designed for the Indian
+                            banking sector. It synchronizes ancient principles of financial statecraft with modern
+                            explainable AI to automate complex Credit Appraisal Memorandums (CAM).</p>
+                        <p>Our methodology focuses on the "Five Cs of Credit" — Character, Capacity, Capital,
+                            Collateral, and Conditions — processed through a civilizational lens of risk management.</p>
+                    </section>
+
+                    <section id="risk-architecture">
+                        <h2>Risk Scoring Architecture</h2>
+                        <p>The core of Arthashastra AI is a deterministic scoring engine that evaluates financial
+                            coefficients derived from Annual Reports, GST returns, and Bank Statements.</p>
+                        <div class="code-block">
+                            // Baseline Institutional Calculation<br>
+                            Score = (DSCR * 0.4) + (Leverage * 0.3) + (Condition Adj. * 0.3)
+                        </div>
+                        <p>The engine applies "Strategic Adjustments" which allow human credit officers to inject
+                            civilizational context into the algorithmic output, ensuring AI acts as a tool, not a
+                            replacement for judgment.</p>
+                    </section>
+
+                    <section id="dharma-ledger">
+                        <h2>Dharma Ledger Integration</h2>
+                        <p>The Dharma Ledger serves as your cryptographically secured vault of institutional history.
+                            Every assessment generated is recorded with a unique Mauryan Grade (A+, BBB, etc.) and
+                            archived for audit-ready compliance.</p>
+                        <p>Administrators can use the Intelligence HUD to filter through decades of historical credit
+                            decisions, identifying patterns in sector-specific defaults or growth trajectories.</p>
+                    </section>
+
+                    <section id="ai-underwriting">
+                        <h2>AI Underwriting Meta</h2>
+                        <p>Our AI operates on an Explainable AI (XAI) framework. You can inspect the exact metrics and
+                            reasoning the model used to arrive at a risk grade.</p>
+                        <p>Unlike black-box models, Arthashastra AI provides an immutable audit trail, pinpointing
+                            exactly how Days Past Due (DPD) or high utilization ratios influenced the final Credit
+                            Appraisal Memorandum.</p>
+                    </section>
+
+                    <section id="security">
+                        <h2>Security & Sovereignty</h2>
+                        <p>We believe in absolute data sovereignty. Data operates completely client-side via your
+                            browser; Arthashastra AI does not harvest your institutional financial data to external
+                            servers or train overarching public models.</p>
+                        <p>All stored case files are encrypted in your local Dharma Ledger (browser storage),
+                            guaranteeing that your credit evaluations never leak beyond your local environment.</p>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+</body>
+
+</html>

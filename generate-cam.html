@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generate CAM | Ashtrashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tiro+Tamil+Optimized:ital@0;1&family=Noto+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="generate-cam.html" class="active">Generate CAM</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="generate">
+        <div class="container">
+            <h2 class="section-title">Generate Credit Appraisal Memo (CAM)</h2>
+            <form id="camForm" class="cam-form" onsubmit="return false;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Company Name</label>
+                        <input type="text" id="company" placeholder="e.g., XYZ Manufacturing Pvt Ltd" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Promoter(s)</label>
+                        <input type="text" id="promoters" placeholder="e.g., A. Sharma, B. Iyer" />
+                    </div>
+                    <div class="form-group">
+                        <label>Sector</label>
+                        <input type="text" id="sector" placeholder="e.g., Auto Components" />
+                    </div>
+                    <div class="form-group">
+                        <label>Proposed Facility (₹)</label>
+                        <input type="number" id="facility" placeholder="e.g., 50000000" step="any" />
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>EBITDA (₹)</label>
+                        <input type="number" id="ebitda" placeholder="e.g., 120000000" step="any" />
+                    </div>
+                    <div class="form-group">
+                        <label>Annual Debt Service (₹)</label>
+                        <input type="number" id="debtService" placeholder="e.g., 60000000" step="any" />
+                    </div>
+                    <div class="form-group">
+                        <label>Net Worth (₹)</label>
+                        <input type="number" id="networth" placeholder="e.g., 300000000" step="any" />
+                    </div>
+                    <div class="form-group">
+                        <label>Collateral Value (₹)</label>
+                        <input type="number" id="collateral" placeholder="e.g., 80000000" step="any" />
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Qualitative Notes (Character/Conditions)</label>
+                        <textarea id="notes"
+                            placeholder="e.g., No major litigations; sector stable; promoter experienced"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Officer Risk Adjustment (−10 to +10)</label>
+                        <input type="range" id="adjust" min="-10" max="10" value="0" />
+                        <div class="range-value"><span id="adjustVal">0</span></div>
+                    </div>
+                </div>
+                <button class="btn primary" id="buildCam" style="display:block;width:100%;margin:0 auto;">Build CAM
+                    Preview</button>
+            </form>
+
+            <div id="camPreview" class="cam-preview hidden"></div>
+            <button class="btn ghost hidden" id="downloadCam" style="margin-top: 20px; width: 100%;">Download CAM
+                (HTML)</button>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+                <a href="demo.html">Demo</a>
+                <a href="banking-intelligence.html">Banking Intelligence</a>
+                <a href="privacy-policy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="contact.html">Contact</a>
+            </div>
+            <p>© 2026 Ashtrashastra AI • Hackathon Prototype for CAM automation.</p>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

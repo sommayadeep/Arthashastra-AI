@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Features | Ashtrashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tiro+Tamil+Optimized:ital@0;1&family=Noto+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="features.html" class="active">Features</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Platform Modules</h2>
+
+            <div style="display: grid; gap: 40px;">
+
+                <div class="card">
+                    <h3>1. Data Ingestion Engine</h3>
+                    <p>Our multi-modal ingestion system handles unstructured and structured financial data.</p>
+                    <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
+                        <li><strong>PDF Parsing:</strong> OCR and text extraction from Annual Reports and Sanction
+                            Letters.</li>
+                        <li><strong>GST Extraction:</strong> Automated parsing of GSTR-3B and GSTR-1 returns.</li>
+                        <li><strong>Bank Normalization:</strong> Standardizing transaction descriptions across different
+                            bank formats.</li>
+                        <li><strong>Legal Scan:</strong> Identifying key clauses in legal notices and contracts.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>2. Secondary Research Agent</h3>
+                    <p>An autonomous agent that scans the web for external risks and intelligence.</p>
+                    <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
+                        <li><strong>Promoter Checks:</strong> Background verification and reputation analysis.</li>
+                        <li><strong>Litigation Flags:</strong> Scanning court records and news for disputes.</li>
+                        <li><strong>Media Risk:</strong> Sentiment analysis of news articles related to the entity.</li>
+                        <li><strong>Sector Intelligence:</strong> Macro-economic trends affecting the borrower's
+                            industry.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>3. Explainable AI Engine</h3>
+                    <p>Transparent scoring logic based on the fundamental Five Cs of Credit.</p>
+                    <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
+                        <li><strong>Five Cs Model:</strong> Character, Capacity, Capital, Collateral, and Conditions.
+                        </li>
+                        <li><strong>Risk Grading:</strong> Dynamic scoring (0-100) mapped to internal rating grades (A
+                            to B).</li>
+                        <li><strong>Officer Override:</strong> Allows credit officers to apply judgment adjustments (+/-
+                            score).</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>4. CAM Generator</h3>
+                    <p>Produces a standardized, committee-ready Credit Appraisal Memo.</p>
+                    <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
+                        <li><strong>Structured Output:</strong> Clean HTML/PDF format ready for presentation.</li>
+                        <li><strong>Committee-Ready:</strong> Includes executive summary, financial snapshot, and
+                            recommendation.</li>
+                        <li><strong>Export Architecture:</strong> One-click download for offline archiving.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+                <a href="demo.html">Demo</a>
+                <a href="banking-intelligence.html">Banking Intelligence</a>
+                <a href="privacy-policy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="contact.html">Contact</a>
+            </div>
+            <p>© 2026 Ashtrashastra AI • Hackathon Prototype for CAM automation.</p>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

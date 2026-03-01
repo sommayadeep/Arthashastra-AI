@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banking Intelligence | Arthashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        :root {
+            --high-risk: #c0392b;
+            --mod-risk: #d35400;
+            --low-risk: #27ae60;
+            --broadcast-red: #ff2e2e;
+        }
+
+        /* News Broadcast Typography */
+        .news-headline {
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
+            font-size: 1.8rem;
+            color: var(--imperial-indigo);
+            line-height: 1.2;
+            margin: 0 0 10px 0;
+            transition: color 0.3s;
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+        }
+
+        .news-headline:hover {
+            color: var(--antique-gold);
+        }
+
+        .news-item {
+            border-bottom: 3px solid var(--antique-gold);
+            padding: 30px 0;
+            position: relative;
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 25px;
+            animation: slideInLeft 0.5s ease-out both;
+            background: transparent !important;
+            /* Remove box feel */
+            box-shadow: none !important;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .news-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .source-badge {
+            font-weight: 800;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--imperial-indigo);
+            border: 1.5px solid var(--imperial-indigo);
+            padding: 4px 8px;
+            width: 100%;
+        }
+
+        .live-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--broadcast-red);
+            font-weight: 900;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--broadcast-red);
+            border-radius: 50%;
+            animation: pulse-red 1s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .risk-pill {
+            padding: 3px 10px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: white;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .risk-high {
+            background: var(--high-risk);
+        }
+
+        .risk-moderate {
+            background: var(--mod-risk);
+        }
+
+        .risk-low {
+            background: var(--low-risk);
+        }
+
+        .broadcast-ticker {
+            background: #000;
+            color: #fff;
+            padding: 12px 0;
+            font-family: 'Noto Sans', sans-serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            border-top: 3px solid var(--antique-gold);
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .ticker-inner {
+            display: inline-block;
+            animation: tickerSwipe 80s linear infinite;
+            /* Professional reading speed */
+        }
+
+        @keyframes tickerSwipe {
+            0% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .breaking-label {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            background: var(--broadcast-red);
+            color: #fff;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            font-weight: 900;
+            font-style: italic;
+            z-index: 10;
+            box-shadow: 10px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .impact-tag {
+            font-size: 0.65rem;
+            font-weight: 800;
+            background: var(--imperial-indigo);
+            color: var(--antique-gold);
+            padding: 3px 10px;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+
+        .news-stats-bar {
+            background: var(--imperial-indigo);
+            color: var(--antique-gold);
+            padding: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--antique-gold);
+        }
+
+        /* RBI Section - News style */
+        .circular-item {
+            padding: 20px 0;
+            border-bottom: 1px dotted var(--border-gold);
+        }
+
+        .archive-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .archive-table th {
+            text-align: left;
+            padding: 15px;
+            background: var(--imperial-indigo);
+            color: white;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .archive-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--sandstone-ash);
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--ivory-card);
+            border: 1px solid var(--antique-gold);
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+
+<body style="background: var(--manuscript-paper);">
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="banking-intelligence.html" class="active">Banking News</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- NEWS BROADCAST HEADER -->
+        <div
+            style="background: #000; padding: 60px 0; border-bottom: 5px solid var(--antique-gold); text-align: center;">
+            <h1
+                style="font-family: 'Playfair Display', serif; font-size: 4.5rem; color: #fff; margin: 0; line-height: 1;">
+                BANKING <span style="color: var(--antique-gold);">WORLD</span>
+            </h1>
+            <p
+                style="color: var(--antique-gold); font-weight: 900; letter-spacing: 5px; text-transform: uppercase; margin-top: 15px;">
+                Institutional Regulatory Intelligence • 24/7 LIVE
+            </p>
+        </div>
+
+        <!-- STATS OVERLAY -->
+        <div class="news-stats-bar">
+            <span>🔴 HIGH RISK ALERT: <span id="highRiskCount">0</span></span>
+            <span>⚖️ COMPLIANCE ACTIONS: <span id="complianceCount">0</span></span>
+            <span>💧 LIQUIDITY ALERTS: <span id="liquidityCount">0</span></span>
+        </div>
+
+        <!-- TICKER -->
+        <div class="broadcast-ticker">
+            <div class="breaking-label">LIVE UPDATES</div>
+            <div class="ticker-inner" id="tickerContent">
+                FETCHING LATEST MARKET MANUSCRIPTS... • RBI REPOSITORY SCAN IN PROGRESS... • CIVILIZATIONAL RISK
+                ANALYSIS LIVE...
+            </div>
+        </div>
+
+        <div class="container" style="margin-top: 40px;">
+
+            <!-- FILTER HUD -->
+            <div class="filter-header">
+                <div style="flex: 2; display: flex; gap: 15px;">
+                    <input type="text" id="bankSearch" class="input-box"
+                        placeholder="Search by Financial Institution..."
+                        style="margin-top: 0; background: transparent; border-bottom: 2px solid var(--imperial-indigo);">
+                    <select id="categoryFilter" class="input-box" style="margin-top: 0; width: 200px;">
+                        <option value="all">ALL FEEDS</option>
+                        <option value="rbi">REGULATORY</option>
+                        <option value="risk">RISK ALERTS</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="refreshBtn">RESCAN REALM</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 60px;">
+
+                <!-- BROADCAST FEED -->
+                <div>
+                    <div
+                        style="border-bottom: 4px solid var(--imperial-indigo); padding-bottom: 10px; margin-bottom: 20px;">
+                        <h2
+                            style="font-family: 'Playfair Display', serif; color: var(--imperial-indigo); font-size: 2rem; margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <div class="live-dot"></div> MAIN BROADCAST
+                        </h2>
+                    </div>
+
+                    <div id="loader" style="text-align: center; padding: 100px 0; display: none;">
+                        <div class="loading-spinner"
+                            style="margin: 0 auto 20px; width: 60px; height: 60px; border-width: 6px;"></div>
+                        <p style="font-weight: 900; letter-spacing: 2px;">SYNCHRONIZING WITH FINANCIAL HERALDS...</p>
+                    </div>
+
+                    <div id="newsGrid">
+                        <!-- Broadcast items injected here -->
+                    </div>
+                </div>
+
+                <!-- REGULATORY SIDEBAR -->
+                <div style="border-left: 1px solid var(--border-gold); padding-left: 40px;">
+                    <div style="background: var(--imperial-indigo); color: white; padding: 15px; margin-bottom: 25px;">
+                        <h3 style="margin:0; font-size: 1.2rem; text-transform: uppercase;">RBI DIRECTIVES</h3>
+                    </div>
+                    <div id="circularsList">
+                        <!-- Circulars -->
+                    </div>
+
+                    <div style="background: var(--antique-gold); color: white; padding: 15px; margin: 50px 0 25px 0;">
+                        <h3 style="margin:0; font-size: 1.2rem; text-transform: uppercase;">HERALD ARCHIVE</h3>
+                    </div>
+                    <table class="archive-table">
+                        <tbody id="archiveBody">
+                            <!-- Archive rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer" style="margin-top: 100px;">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+
+    <script src="script.js?v=5"></script>
+    <script src="news_engine.js?v=3"></script>
+</body>
+
+</html>

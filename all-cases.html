@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Cases | Arthashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Noto+Sans:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html" class="active">All Cases</a>
+                <a href="banking-intelligence.html">Banking News</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div
+            style="background: var(--imperial-indigo); padding: 80px 0; border-bottom: 4px solid var(--antique-gold); margin-bottom: 60px;">
+            <div class="container">
+                <div class="hero-grid" style="grid-template-columns: 1.5fr 0.5fr;">
+                    <div class="header-text">
+                        <h2
+                            style="font-size: 3rem; color: var(--manuscript-paper); font-family: 'Playfair Display', serif;">
+                            Institutional Case Management</h2>
+                        <div style="display: flex; align-items: center; gap: 20px; margin-top: 15px;">
+                            <p
+                                style="color: var(--antique-gold); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin: 0;">
+                                Dharma Ledger • Historical Assessments</p>
+                            <button onclick="clearDharmaLedger()" class="btn btn-outline"
+                                style="border-color: #ff4757; color: #ff4757; padding: 5px 12px; font-size: 0.65rem; background: rgba(255,255,255,0.05);">Purge
+                                All Records</button>
+                        </div>
+                    </div>
+                    <div class="header-visual" style="display: flex; justify-content: flex-end; align-items: center;">
+                        <img src="logo.png" alt="Emblem"
+                            style="width: 140px; height: 140px; border: 2px solid var(--antique-gold); border-radius: 50%; padding: 15px; background: rgba(255,255,255,0.05); animation: gentle-glow 4s infinite;"
+                            onerror="this.src='image.png'">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+
+            <div class="filter-bar"
+                style="background: var(--ivory-card); border: 1px solid var(--antique-gold); padding: 25px; border-radius: 4px; display: flex; gap: 20px; margin-bottom: 40px; box-shadow: var(--shadow-ancient);">
+                <input type="text" id="ledgerSearch" class="input-box" style="flex: 1; margin-top: 0;"
+                    placeholder="Search by company name...">
+                <select id="riskFilter" class="input-box" style="width: 250px; margin-top: 0;">
+                    <option value="">Risk Level (All)</option>
+                    <option value="A">Grade A</option>
+                    <option value="BBB">Grade BBB</option>
+                    <option value="BB">Grade BB/B</option>
+                </select>
+                <select id="statusFilter" class="input-box" style="width: 200px; margin-top: 0;">
+                    <option value="">Status (All)</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div class="cases-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Case ID</th>
+                            <th>Company</th>
+                            <th>Sector</th>
+                            <th>Risk Grade</th>
+                            <th>Status</th>
+                            <th>Created Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allCasesBody">
+                        <tr>
+                            <td>#1290</td>
+                            <td>Reliance Industries Ltd</td>
+                            <td>Oil & Gas</td>
+                            <td><span class="risk-tag risk-a">A+</span></td>
+                            <td>Approved</td>
+                            <td>Feb 20, 2026</td>
+                            <td><a href="#" class="view-btn">View Case</a></td>
+                        </tr>
+                        <tr>
+                            <td>#1289</td>
+                            <td>Adani Enterprises</td>
+                            <td>Infrastructure</td>
+                            <td><span class="risk-tag risk-bbb">BBB</span></td>
+                            <td>Pending</td>
+                            <td>Feb 19, 2026</td>
+                            <td><a href="#" class="view-btn">View Case</a></td>
+                        </tr>
+                        <tr>
+                            <td>#1288</td>
+                            <td>Tata Motors</td>
+                            <td>Automotive</td>
+                            <td><span class="risk-tag risk-a">A</span></td>
+                            <td>Approved</td>
+                            <td>Feb 18, 2026</td>
+                            <td><a href="#" class="view-btn">View Case</a></td>
+                        </tr>
+                        <tr>
+                            <td>#1287</td>
+                            <td>Zomato Ltd</td>
+                            <td>Tech / Food</td>
+                            <td><span class="risk-tag risk-bb">BB</span></td>
+                            <td>Rejected</td>
+                            <td>Feb 15, 2026</td>
+                            <td><a href="#" class="view-btn">View Case</a></td>
+                        </tr>
+                        <tr>
+                            <td>#1286</td>
+                            <td>InterGlobe Aviation</td>
+                            <td>Aviation</td>
+                            <td><span class="risk-tag risk-bbb">BBB</span></td>
+                            <td>Approved</td>
+                            <td>Feb 12, 2026</td>
+                            <td><a href="#" class="view-btn">View Case</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

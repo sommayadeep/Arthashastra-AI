@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Upload | Ashtrashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tiro+Tamil+Optimized:ital@0;1&family=Noto+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Ashtrashastra AI Logo" class="logo" onerror="this.src='image.png'">
+                <span class="brand-name">Ashtrashastra AI</span>
+            </a>
+            <nav class="nav-links">
+                <a href="features.html">Features</a>
+                <a href="demo.html" class="active">Demo</a>
+                <a href="banking-intelligence.html">Banking News</a>
+                <a class="cta" href="generate-cam.html">Generate CAM</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="demo">
+        <div class="container">
+            <h2 class="section-title">Demo – Upload and Parse</h2>
+            <div class="uploader">
+                <div class="upload-group">
+                    <label>Annual Report (PDF)</label>
+                    <input type="file" id="ar" accept="application/pdf" />
+                </div>
+                <div class="upload-group">
+                    <label>Sanction Letter (PDF)</label>
+                    <input type="file" id="sanction" accept="application/pdf" />
+                </div>
+                <div class="upload-group">
+                    <label>Legal Notice (PDF)</label>
+                    <input type="file" id="legal" accept="application/pdf" />
+                </div>
+                <div class="upload-group">
+                    <label>GST Returns (CSV/Excel/PDF)</label>
+                    <input type="file" id="gst" />
+                </div>
+                <div class="upload-group">
+                    <label>Bank Statement (CSV/PDF)</label>
+                    <input type="file" id="bank" />
+                </div>
+            </div>
+            <button class="btn flat" id="simulateExtract">Simulate Extraction</button>
+
+            <div style="margin-top: 30px;">
+                <h3 style="color: var(--dark-brown);">Extraction Results</h3>
+                <pre id="extractOutput" class="output"></pre>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+                <a href="demo.html">Demo</a>
+                <a href="banking-intelligence.html">Banking Intelligence</a>
+                <a href="privacy-policy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="contact.html">Contact</a>
+            </div>
+            <p>© 2026 Ashtrashastra AI • Hackathon Prototype for CAM automation.</p>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

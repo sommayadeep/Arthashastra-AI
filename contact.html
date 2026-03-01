@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact | Ashtrashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tiro+Tamil+Optimized:ital@0;1&family=Noto+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Ashtrashastra AI Logo" class="logo" onerror="this.src='image.png'">
+                <span class="brand-name">Ashtrashastra AI</span>
+            </a>
+            <nav class="nav-links">
+                <a href="features.html">Features</a>
+                <a href="demo.html">Demo</a>
+                <a href="banking-intelligence.html">Banking News</a>
+                <a class="cta" href="generate-cam.html">Generate CAM</a>
+            </nav>
+        </div>
+    </header>
+
+    <section style="padding: 80px 0;">
+        <div class="container" style="max-width: 600px;">
+            <h2 class="section-title">Contact Us</h2>
+            <div class="card">
+                <form class="cam-form" onsubmit="alert('Inquiry Submitted!'); return false;">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" required placeholder="Your Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Organization</label>
+                        <input type="text" placeholder="Bank / NBFC Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea rows="4" placeholder="How can we help you?"></textarea>
+                    </div>
+                    <button class="btn primary" style="width: 100%;">Submit Inquiry</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+                <a href="demo.html">Demo</a>
+                <a href="banking-intelligence.html">Banking Intelligence</a>
+                <a href="privacy-policy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="contact.html">Contact</a>
+            </div>
+            <p>© 2026 Ashtrashastra AI • Hackathon Prototype for CAM automation.</p>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

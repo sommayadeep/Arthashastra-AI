@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Underwriting Workspace | Arthashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Noto+Sans:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=3">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html" class="active">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="banking-intelligence.html">Banking News</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div
+            style="background: var(--imperial-indigo); padding: 80px 0; border-bottom: 4px solid var(--antique-gold); margin-bottom: 60px;">
+            <div class="container">
+                <div class="hero-grid" style="grid-template-columns: 1.5fr 0.5fr;">
+                    <div class="header-text">
+                        <h2
+                            style="font-size: 3rem; color: var(--manuscript-paper); font-family: 'Playfair Display', serif;">
+                            Institutional Underwriting Workspace</h2>
+                        <p
+                            style="color: var(--antique-gold); font-weight: 800; letter-spacing: 2px; margin-top: 15px; text-transform: uppercase;">
+                            Dharma Assessment • Mauryan Precision</p>
+                    </div>
+                    <div class="header-visual" style="display: flex; justify-content: flex-end; align-items: center;">
+                        <img src="logo.png" alt="Emblem"
+                            style="width: 140px; height: 140px; border: 2px solid var(--antique-gold); border-radius: 50%; padding: 15px; background: rgba(255,255,255,0.05); animation: gentle-glow 4s infinite;"
+                            onerror="this.src='image.png'">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="workspace-container" style="margin-top: 0;">
+                <h2 class="hidden">Form Title</h2>
+
+                <form id="newCaseForm" onsubmit="return false;">
+                    <!-- BORROWER INFORMATION -->
+                    <section class="form-section">
+                        <h3>1. Borrower Information</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Legal Entity
+                                    Name</label>
+                                <input type="text" id="company" class="input-box"
+                                    placeholder="e.g. Maurya Infra Pvt Ltd" required>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Promoter(s)</label>
+                                <input type="text" id="promoters" class="input-box" placeholder="Key promoters name">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Sector /
+                                    Industry</label>
+                                <input type="text" id="sector" class="input-box"
+                                    placeholder="e.g. Textiles, Precision Engineering">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- UPLOAD DOCUMENTS -->
+                    <section class="form-section">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 0;">2. Document Intelligence</h3>
+                            <button type="button" id="aiExtractBtn" class="btn"
+                                style="background: var(--imperial-indigo); color: var(--manuscript-paper); border: 2px solid var(--antique-gold); display: flex; align-items: center; gap: 10px; font-weight: 800; padding: 12px 20px;">
+                                <span class="ai-sparkle">✨</span> Arthashastra AI Auto-Extract
+                            </button>
+                        </div>
+
+                        <div id="aiLoading" class="hidden"
+                            style="background: rgba(26, 37, 64, 0.05); border: 1px solid var(--antique-gold); border-radius: 4px; padding: 20px; text-align: center; margin-bottom: 25px; animation: fadeInScale 0.3s forwards;">
+                            <div class="spinner"
+                                style="border: 3px solid var(--sandstone-ash); border-top: 3px solid var(--antique-gold); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px;">
+                            </div>
+                            <span
+                                style="color: var(--imperial-indigo); font-weight: 700; font-size: 0.9rem;">Arthashastra
+                                AI is analyzing financial manuscripts...</span>
+                        </div>
+
+                        <div class="doc-upload-grid">
+                            <div class="upload-item">
+                                <span>Annual Report (3Y)</span>
+                                <input type="file" hidden id="ar_file">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('ar_file').click()">Select</button>
+                            </div>
+                            <div class="upload-item">
+                                <span>GST Returns (12M)</span>
+                                <input type="file" hidden id="gst_file">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('gst_file').click()">Select</button>
+                            </div>
+                            <div class="upload-item">
+                                <span>Bank Statements (12M)</span>
+                                <input type="file" hidden id="bank_file">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('bank_file').click()">Select</button>
+                            </div>
+                            <div class="upload-item">
+                                <span>Legal Disclosure</span>
+                                <input type="file" hidden id="legal_file">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('legal_file').click()">Select</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- FINANCIAL INPUTS -->
+                    <section class="form-section">
+                        <h3>3. Financial Inputs</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">EBITDA (₹ Cr)</label>
+                                <input type="number" id="ebitda" class="input-box" placeholder="Operating profit"
+                                    step="any">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Debt Service (₹
+                                    Cr)</label>
+                                <input type="number" id="debtService" class="input-box"
+                                    placeholder="Annual debt obligations" step="any">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Net Worth (₹ Cr)</label>
+                                <input type="number" id="networth" class="input-box" placeholder="Tangible net worth"
+                                    step="any">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Proposed Facility (₹
+                                    Cr)</label>
+                                <input type="number" id="facility" class="input-box" placeholder="Requested loan amount"
+                                    step="any">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Collateral Value (₹
+                                    Cr)</label>
+                                <input type="number" id="collateral" class="input-box" placeholder="Security valuation"
+                                    step="any">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- RISK ADJUSTMENT -->
+                    <section class="form-section">
+                        <h3>4. Risk Customization</h3>
+                        <div style="margin: 20px 0;">
+                            <label style="font-size: 1rem; font-weight: 800; color: var(--imperial-indigo);">Strategic
+                                Adjustment (−10 to +10)</label>
+                            <input type="range" id="adjust" min="-10" max="10" value="0"
+                                style="width:100%; accent-color: var(--antique-gold); margin-top:25px;">
+                            <div style="text-align: center; font-weight: 900; color: var(--antique-gold); margin-top: 15px; font-size: 1.8rem;"
+                                id="adjustLabel">0</div>
+                        </div>
+                    </section>
+
+                    <button class="btn btn-primary" id="generateCamBtn"
+                        style="width: 100%; font-size: 1.25rem; padding: 22px; margin-top: 20px;">Generate
+                        Intelligence-backed CAM</button>
+                </form>
+
+                <div id="camOutput" class="cam-output hidden"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+
+    <script src="script.js?v=3"></script>
+</body>
+
+</html>

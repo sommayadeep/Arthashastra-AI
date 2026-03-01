@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Case View | Ashtrashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tiro+Tamil+Optimized:ital@0;1&family=Noto+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="new-case.html" class="submit-case-btn">Submit Case</a>
+            </nav>
+        </div>
+    </header>
+
+    <main style="padding: 80px 0;">
+        <div class="container">
+            <!-- Header / Badge Section -->
+            <div style="text-align: center; margin-bottom: 60px; animation: fadeInUp 0.5s ease-out;">
+                <div
+                    style="font-size: 0.8rem; font-weight: 800; color: var(--antique-gold); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px;">
+                    Dharma Decryption • Official Manuscript</div>
+
+                <div id="viewGradeBadge" class="risk-tag"
+                    style="font-size: 3.5rem; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin: 0 auto 25px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                    --</div>
+
+                <h1 id="viewCompany"
+                    style="font-size: 3.5rem; color: var(--imperial-indigo); margin-bottom: 15px; font-family: 'Playfair Display', serif;">
+                    Loading Entity...</h1>
+
+                <div
+                    style="display: flex; justify-content: center; gap: 30px; color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">
+                    <span id="viewCaseId">CASE ID: #----</span>
+                    <span id="viewDate">DATE: -- --- ----</span>
+                    <span id="viewStatus" style="color: var(--antique-gold);">STATUS: --</span>
+                </div>
+
+                <button onclick="window.print()" class="btn btn-outline"
+                    style="margin-top: 30px; border-color: var(--antique-gold); color: var(--heading-dark);">Print
+                    Record</button>
+            </div>
+
+            <!-- Two Column Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
+                <!-- Borrower Info -->
+                <div class="card"
+                    style="padding: 40px; background: var(--ivory-card); border: 1px solid var(--border-gold);">
+                    <h3
+                        style="border-bottom: 2px solid var(--antique-gold); padding-bottom: 15px; margin-bottom: 25px; color: var(--imperial-indigo); font-size: 1.4rem;">
+                        Borrower Information</h3>
+
+                    <div style="margin-bottom: 20px;">
+                        <div
+                            style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                            Full Legal Entity</div>
+                        <div id="viewCompanySmall"
+                            style="font-size: 1.1rem; font-weight: 700; color: var(--heading-dark);">--</div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <div
+                            style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                            Promoters / Directors</div>
+                        <div id="viewPromoters"
+                            style="font-size: 1.1rem; font-weight: 700; color: var(--heading-dark);">--</div>
+                    </div>
+
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                            Sovereign Sector</div>
+                        <div id="viewSector" style="font-size: 1.1rem; font-weight: 700; color: var(--heading-dark);">--
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financials -->
+                <div class="card"
+                    style="padding: 40px; background: var(--ivory-card); border: 1px solid var(--border-gold);">
+                    <h3
+                        style="border-bottom: 2px solid var(--antique-gold); padding-bottom: 15px; margin-bottom: 25px; color: var(--imperial-indigo); font-size: 1.4rem;">
+                        Financial Intelligence Post-Mortem</h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                Operating Profit (EBITDA)</div>
+                            <div id="viewEbitda"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                Annual Debt Obligations</div>
+                            <div id="viewDebt"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                Requested Facility</div>
+                            <div id="viewFacility"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                Approved Sanction</div>
+                            <div id="viewApproved"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                DSCR</div>
+                            <div id="viewDscr"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                                Leverage</div>
+                            <div id="viewLeverage"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- XAI Section (Explainable AI) -->
+            <div class="card"
+                style="padding: 40px; background: var(--ivory-card); border: 1px solid var(--border-gold); margin-bottom: 40px; animation: fadeInUp 0.7s ease-out;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--antique-gold); padding-bottom: 15px; margin-bottom: 30px;">
+                    <h3 style="color: var(--imperial-indigo); font-size: 1.4rem; margin: 0;">Explainable AI (XAI)
+                        Underwriting Matrix</h3>
+                    <div
+                        style="font-size: 0.75rem; font-weight: 800; background: var(--imperial-indigo); color: var(--antique-gold); padding: 5px 12px; border-radius: 4px; letter-spacing: 1px;">
+                        VIVRITI CAPITAL HACKATHON EDITION</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px;">
+
+                    <!-- Feature 1 -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span
+                                style="font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); text-transform: uppercase;">Financial
+                                Health</span>
+                            <span id="xaiFinHealth"
+                                style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo);">--%</span>
+                        </div>
+                        <div
+                            style="width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+                            <div id="xaiFinBar"
+                                style="height: 100%; width: 0%; background: var(--antique-gold); transition: width 1s ease-in-out;">
+                            </div>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #555; line-height: 1.4;">Analyzed via Cash Flow Statements,
+                            DSCR, and Leverage Ratios.</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span
+                                style="font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); text-transform: uppercase;">Alternative
+                                Data & NLP Risk</span>
+                            <span id="xaiAltRisk"
+                                style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo);">--%</span>
+                        </div>
+                        <div
+                            style="width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+                            <div id="xaiAltBar"
+                                style="height: 100%; width: 0%; background: var(--imperial-indigo); transition: width 1s ease-in-out 0.2s;">
+                            </div>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #555; line-height: 1.4;">Derived from Promoters' legal
+                            history, RBI circulars, and live news.</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span
+                                style="font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); text-transform: uppercase;">Macro-Economic
+                                Headwinds</span>
+                            <span id="xaiMacro"
+                                style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo);">--%</span>
+                        </div>
+                        <div
+                            style="width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+                            <div id="xaiMacroBar"
+                                style="height: 100%; width: 0%; background: #27ae60; transition: width 1s ease-in-out 0.4s;">
+                            </div>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #555; line-height: 1.4;">Sector performance against current
+                            RBI monetary policy dynamics.</p>
+                    </div>
+
+                </div>
+
+                <div
+                    style="margin-top: 35px; background: rgba(185, 149, 59, 0.1); border-left: 4px solid var(--antique-gold); padding: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--imperial-indigo); font-size: 1rem;">AI Decision Summary
+                    </h4>
+                    <p id="xaiSummary"
+                        style="margin: 0; font-size: 0.9rem; color: var(--heading-dark); line-height: 1.6;">
+                        Loading AI Interpretation...
+                    </p>
+                </div>
+            </div>
+
+            <div
+                style="text-align: center; margin-top: 60px; border-top: 1px solid var(--antique-gold); padding-top: 40px;">
+                <a href="all-cases.html" class="btn btn-primary">Return to Dharma Ledger</a>
+            </div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+    <script src="script.js?v=5"></script>
+</body>
+
+</html>

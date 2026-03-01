@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference | Arthashastra AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .method-tag {
+            background: var(--imperial-indigo);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            margin-right: 15px;
+        }
+
+        .endpoint-card {
+            background: white;
+            border: 1px solid var(--border-gold);
+            padding: 30px;
+            margin-bottom: 40px;
+            border-radius: 4px;
+            box-shadow: var(--shadow-ancient);
+        }
+
+        .endpoint-path {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            color: var(--heading-dark);
+            font-size: 1.1rem;
+        }
+
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .param-table th,
+        .param-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--sandstone-ash);
+        }
+
+        .param-table th {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--antique-gold);
+            letter-spacing: 1px;
+        }
+
+        .code-snippet {
+            background: #1e1e1e;
+            color: #4EC9B0;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 25px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body style="background: var(--manuscript-paper);">
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="brand">
+                <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
+                <h2>Arthashastra AI</h2>
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="new-case.html">New Case</a>
+                <a href="all-cases.html">All Cases</a>
+                <a href="banking-intelligence.html">Banking News</a>
+            </nav>
+        </div>
+    </header>
+
+    <main style="padding: 100px 0;">
+        <div class="container" style="max-width: 900px;">
+            <h1
+                style="font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--imperial-indigo); margin-bottom: 20px;">
+                Institutional API Reference</h1>
+            <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 60px;">Integrate Arthashastra's
+                credit scoring engine directly into your bank's Core Banking System (CBS) via our secure REST interface.
+            </p>
+
+            <div class="endpoint-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span class="method-tag">POST</span>
+                    <span class="endpoint-path">/api/v1/analyze-credit</span>
+                </div>
+                <p>Submit borrower financial data to receive a comprehensive Mauryan Risk Grade and CAM-ready
+                    coefficients.</p>
+
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>ebitda</code></td>
+                            <td>Float</td>
+                            <td>Annual operating profit in INR Crores.</td>
+                        </tr>
+                        <tr>
+                            <td><code>debt_service</code></td>
+                            <td>Float</td>
+                            <td>Total annual principal and interest obligations.</td>
+                        </tr>
+                        <tr>
+                            <td><code>facility_amount</code></td>
+                            <td>Float</td>
+                            <td>Proposed loan amount.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="code-snippet">
+                    {<br>
+                    &nbsp;&nbsp;"grade": "A+",<br>
+                    &nbsp;&nbsp;"score": 92,<br>
+                    &nbsp;&nbsp;"ratios": { "dscr": 4.52, "leverage": 0.29 }<br>
+                    }
+                </div>
+            </div>
+
+            <div class="endpoint-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span class="method-tag" style="background: #27ae60;">GET</span>
+                    <span class="endpoint-path">/api/v1/dharma-ledger/{case_id}</span>
+                </div>
+                <p>Retrieve cryptographically secured historical records from the institutional ledger.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-grid"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; text-align: left; padding: 60px 0;">
+            <div style="grid-column: 1 / 2;">
+                <h3 style="color: var(--antique-gold); font-family: 'Playfair Display', serif;">Arthashastra AI</h3>
+                <p style="color: #666; font-size: 0.85rem; line-height: 1.6;">Civilizational Credit Intelligence for the
+                    modern banking era.</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Resources</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="documentation.html"
+                            style="color: #999; text-decoration: none;">Documentation</a></li>
+                    <li style="margin-bottom: 10px;"><a href="api-reference.html"
+                            style="color: #999; text-decoration: none;">API Reference</a></li>
+                    <li style="margin-bottom: 10px;"><a href="support.html"
+                            style="color: #999; text-decoration: none;">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Company</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><a href="about.html"
+                            style="color: #999; text-decoration: none;">About Us</a></li>
+                    <li style="margin-bottom: 10px;"><a href="privacy-policy.html"
+                            style="color: #999; text-decoration: none;">Privacy Policy</a></li>
+                    <li style="margin-bottom: 10px;"><a href="terms.html"
+                            style="color: #999; text-decoration: none;">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Institutional</h4>
+                <p style="color: #666; font-size: 0.8rem;">SRM AP UNIVERSITY<br>info@arthashastra.ai</p>
+            </div>
+        </div>
+        <div class="container footer-bottom" style="border-top: 1px solid #333; padding-top: 30px;">
+            <p>© 2026 Arthashastra AI. All rights reserved.</p>
+            <div class="om-symbol">ॐ</div>
+            <p>Architected with Civilizational Wisdom</p>
+        </div>
+    </footer>
+</body>
+
+</html>
