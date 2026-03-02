@@ -4,18 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Underwriting Workspace | Arthashastra AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Noto+Sans:wght@400;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=8">
 </head>
 
 <body>
 
-    <header class="navbar">
+    <header class="navbar"> 
         <div class="nav-container">
             <a href="index.html" class="brand">
                 <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
@@ -105,32 +108,25 @@
 
                         <div class="doc-upload-grid">
                             <div class="upload-item">
-                                <span>Annual Report (3Y)</span>
-                                <input type="file" hidden id="ar_file">
+                                <span>GST Returns (12M)</span>
+                                <input type="file" hidden id="gst_docs">
                                 <button type="button" class="btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('ar_file').click()">Select</button>
+                                    onclick="document.getElementById('gst_docs').click()">Select</button>
                             </div>
                             <div class="upload-item">
-                                <span>GST Returns (12M)</span>
-                                <input type="file" hidden id="gst_file">
+                                <span>ITRs (3Y)</span>
+                                <input type="file" hidden id="itr_docs">
                                 <button type="button" class="btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('gst_file').click()">Select</button>
+                                    onclick="document.getElementById('itr_docs').click()">Select</button>
                             </div>
                             <div class="upload-item">
                                 <span>Bank Statements (12M)</span>
-                                <input type="file" hidden id="bank_file">
+                                <input type="file" hidden id="bank_docs">
                                 <button type="button" class="btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('bank_file').click()">Select</button>
-                            </div>
-                            <div class="upload-item">
-                                <span>Legal Disclosure</span>
-                                <input type="file" hidden id="legal_file">
-                                <button type="button" class="btn"
-                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('legal_file').click()">Select</button>
+                                    onclick="document.getElementById('bank_docs').click()">Select</button>
                             </div>
                         </div>
                     </section>
@@ -138,34 +134,28 @@
                     <!-- FINANCIAL INPUTS -->
                     <section class="form-section">
                         <h3>3. Financial Inputs</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label style="font-weight: 800; color: var(--imperial-indigo);">EBITDA (₹ Cr)</label>
-                                <input type="number" id="ebitda" class="input-box" placeholder="Operating profit"
-                                    step="any">
+                        <p style="margin: 10px 0 20px; color: var(--text-secondary); font-weight: 800;">Only upload these three: GST Filings (12M), ITRs (3Y), Bank Statements (12M).</p>
+                        <div class="doc-upload-grid">
+                            <div class="upload-item">
+                                <span>GST Filings (12M)</span>
+                                <input type="file" hidden id="gst_financials">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('gst_financials').click()">Select</button>
                             </div>
-                            <div class="form-group">
-                                <label style="font-weight: 800; color: var(--imperial-indigo);">Debt Service (₹
-                                    Cr)</label>
-                                <input type="number" id="debtService" class="input-box"
-                                    placeholder="Annual debt obligations" step="any">
+                            <div class="upload-item">
+                                <span>ITRs (3Y)</span>
+                                <input type="file" hidden id="itr_financials">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('itr_financials').click()">Select</button>
                             </div>
-                            <div class="form-group">
-                                <label style="font-weight: 800; color: var(--imperial-indigo);">Net Worth (₹ Cr)</label>
-                                <input type="number" id="networth" class="input-box" placeholder="Tangible net worth"
-                                    step="any">
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 800; color: var(--imperial-indigo);">Proposed Facility (₹
-                                    Cr)</label>
-                                <input type="number" id="facility" class="input-box" placeholder="Requested loan amount"
-                                    step="any">
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label style="font-weight: 800; color: var(--imperial-indigo);">Collateral Value (₹
-                                    Cr)</label>
-                                <input type="number" id="collateral" class="input-box" placeholder="Security valuation"
-                                    step="any">
+                            <div class="upload-item">
+                                <span>Bank Statements (12M)</span>
+                                <input type="file" hidden id="bank_financials">
+                                <button type="button" class="btn"
+                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
+                                    onclick="document.getElementById('bank_financials').click()">Select</button>
                             </div>
                         </div>
                     </section>
@@ -235,7 +225,7 @@
         </div>
     </footer>
 
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=8"></script>
 </body>
 
 </html>

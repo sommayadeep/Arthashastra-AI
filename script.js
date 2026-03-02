@@ -114,11 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Phase definitions: [label, subtitle, progress%]
   const aiPhases = [
-    ['Invoking Arthashastra Intelligence...', 'INITIALIZING KAUTILYA ENGINE', 10],
-    ['अर्थशास्त्र — Decoding Manuscripts...', 'SCANNING FINANCIAL SHLOKAS', 25],
-    ['Analyzing Dharma of Revenue...', 'EBITDA · DEBT SERVICE · NET WORTH', 45],
-    ['चाणक्य नीति — Applying Ancient Wisdom...', 'RISK GOVERNANCE ALIGNMENT', 65],
-    ['Mauryan Cipher Verification...', 'COLLATERAL · LEVERAGE · DSCR', 80],
+    ['Invoking Arthashastra Intelligence...', 'INITIALIZING KAUTILYA ENGINE', 5],
+    ['Decoding Structured Data...', 'GST · ITRs · BANK STATEMENTS', 20],
+    ['Analyzing Unstructured Manuscripts...', 'ANNUAL REPORTS · FINANCIAL STATEMENTS', 35],
+    ['Assessing Governance Documents...', 'BOARD MINUTES · RATING REPORTS · SHAREHOLDING', 50],
+    ['Verifying External Intelligence...', 'MCA FILINGS · LEGAL DISPUTES · NEWS', 65],
+    ['Incorporating Primary Insights...', 'SITE VISITS · MANAGEMENT INTERVIEWS', 80],
+    ['चाणक्य नीति — Applying Ancient Wisdom...', 'RISK GOVERNANCE ALIGNMENT', 90],
     ['सत्यमेव जयते — Finalizing Assessment...', 'CIVILIZATIONAL GRADE COMPUTATION', 95],
     ['✦ Intelligence Extraction Complete ✦', 'ARTHASHASTRA AI — KAUTILYA ENGINE v3.0', 100],
   ];
@@ -129,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputs = document.querySelectorAll('input[type="file"]');
       const hasFile = Array.from(inputs).some(input => input.files.length > 0);
       if (!hasFile) {
-        alert("⚠️ No documents detected.\n\nPlease select at least one document (Annual Report, GST, or Bank Statement) to proceed.");
+        alert("⚠️ No documents detected.\n\nPlease select at least one document (GST, ITRs, Bank Statements) to proceed.");
         return;
       }
 
@@ -166,12 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (q('#company')) q('#company').value = 'Chandragupta Maritimes Ltd';
         if (q('#promoters')) q('#promoters').value = 'S. Maurya, V. Gupta';
         if (q('#sector')) q('#sector').value = 'Logistics & Infrastructure';
-        if (q('#ebitda')) q('#ebitda').value = '145.50';
-        if (q('#debtService')) q('#debtService').value = '32.20';
-        if (q('#networth')) q('#networth').value = '512.00';
-        if (q('#facility')) q('#facility').value = '150.00';
-        if (q('#collateral')) q('#collateral').value = '210.00';
-
         if (adjust) {
           adjust.value = '4';
           adjustLabel.textContent = '4';
@@ -210,32 +206,25 @@ document.addEventListener('DOMContentLoaded', () => {
         company: q('#company').value || 'Entity Name',
         promoters: q('#promoters').value || 'N/A',
         sector: q('#sector').value || 'N/A',
-        ebitda: parseFloat(q('#ebitda').value) || 0,
-        debtService: parseFloat(q('#debtService').value) || 0,
-        networth: parseFloat(q('#networth').value) || 0,
-        facility: parseFloat(q('#facility').value) || 0,
-        collateral: parseFloat(q('#collateral').value) || 0,
-        adjust: parseInt(q('#adjust').value) || 0
+        adjust: parseInt(q('#adjust').value) || 0,
+        docs: {
+          gst: (q('#gst_financials')?.files || []).length > 0,
+          itr: (q('#itr_financials')?.files || []).length > 0,
+          bank: (q('#bank_financials')?.files || []).length > 0
+        }
       };
+      const docStatusList = [
+        { label: 'GST Filings (12M)', present: data.docs.gst },
+        { label: 'ITRs (3Y)', present: data.docs.itr },
+        { label: 'Bank Statements (12M)', present: data.docs.bank }
+      ];
 
-      // Financial Ratio Logic
-      const dscr = data.debtService > 0 ? (data.ebitda / data.debtService) : 0;
-      const leverage = data.networth > 0 ? (data.facility / data.networth) : 0;
-      const cover = data.facility > 0 ? (data.collateral / data.facility) : 0;
+      const docCount = docStatusList.filter(d => d.present).length;
+      const missingDocs = docStatusList.filter(d => !d.present).map(d => d.label);
+      const coveragePercent = Math.round((docCount / docStatusList.length) * 100);
 
-      // Scoring Model
-      let score = 55; // Baseline
-      if (dscr > 1.8) score += 12;
-      else if (dscr > 1.2) score += 5;
-      else score -= 10;
-
-      if (leverage < 3.0) score += 10;
-      else if (leverage < 5.0) score += 4;
-      else score -= 8;
-
-      if (cover > 1.25) score += 8;
-
-      score += data.adjust;
+      // Scoring Model (documentation readiness + strategic adjustment)
+      let score = 50 + (docCount * 15) + data.adjust; // baseline plus completeness
       score = Math.max(0, Math.min(100, score));
 
       // Grade Logic
@@ -245,93 +234,85 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (score >= 70) { grade = 'A'; riskClass = 'risk-a'; }
       else if (score >= 55) { grade = 'BBB'; riskClass = 'risk-bbb'; }
 
-      // Sanction Logic
-      let approvedAmount = 0;
-      if (score >= 85) approvedAmount = data.facility;
-      else if (score >= 70) approvedAmount = data.facility * 0.85;
-      else if (score >= 55) approvedAmount = data.facility * 0.65;
-      else approvedAmount = 0;
+      const recommendation = missingDocs.length === 0
+        ? 'PROCEED — core financial documents are complete.'
+        : `PENDING — awaiting ${missingDocs.join(', ')}.`;
+
+      const docStatusHtml = docStatusList.map(item => `
+        <li style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border-gold);">
+          <span style="font-weight: 800; color: ${item.present ? 'var(--antique-gold)' : 'var(--text-secondary)'};">${item.present ? '✓' : '○'}</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-weight: 800; color: var(--imperial-indigo);">${item.label}</span>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">${item.present ? 'Uploaded' : 'Upload to proceed'}</span>
+          </div>
+          <span style="font-weight: 800; color: ${item.present ? 'var(--antique-gold)' : 'var(--imperial-indigo)'}; font-size: 0.9rem;">${item.present ? 'Ready' : 'Pending'}</span>
+        </li>
+      `).join('');
 
       // Content Injection with Ancient Bharat / Imperial Indigo theme
+      // IMPORTANT: Use textContent for user-provided data to prevent XSS vulnerabilities.
       camOutput.innerHTML = `
         <div style="border-bottom: 3px solid var(--antique-gold); padding-bottom: 25px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h2 style="font-size: 2.2rem; color: var(--imperial-indigo); margin: 0; font-family: 'Playfair Display', serif;">${data.company}</h2>
-            <p style="color: var(--text-secondary); font-weight: 700; opacity: 0.7; margin: 5px 0 0 0; letter-spacing: 1px; text-transform: uppercase; font-size: 0.75rem;">Credit Appraisal Memo • Case ID: #${Math.floor(Math.random() * 9000) + 1000}</p>
+            <h2 id="cam-company-name" style="font-size: 2.2rem; color: var(--imperial-indigo); margin: 0; font-family: 'Playfair Display', serif;"></h2>
+            <p style="color: var(--text-secondary); font-weight: 700; opacity: 0.7; margin: 5px 0 0 0; letter-spacing: 1px; text-transform: uppercase; font-size: 0.75rem;">Documentation Readiness Memo • Case ID: #${Math.floor(Math.random() * 9000) + 1000}</p>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 0.7rem; font-weight: 800; color: var(--imperial-indigo); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 2px;">Institutional Grade</div>
             <div class="risk-tag ${riskClass}" style="font-size: 1.6rem; padding: 10px 22px;">${grade}</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">Coverage: ${coveragePercent}%</div>
           </div>
         </div>
-
         <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 50px;">
           <div style="background: var(--ivory-card); padding: 35px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
             <h4 style="margin-bottom: 25px; font-size: 1.1rem; color: var(--imperial-indigo); border-bottom: 1px solid var(--antique-gold); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Executive Summary</h4>
             <ul style="list-style: none;">
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Promoter(s)</span> <strong>${data.promoters}</strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Sector</span> <strong>${data.sector}</strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Requested Facility</span> <strong>${formatINR(data.facility)}</strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Approved Sanction</span> <strong style="color: var(--imperial-indigo); font-size: 1.2rem;">${formatINR(approvedAmount)}</strong></li>
+              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Promoter(s)</span> <strong id="cam-promoters"></strong></li>
+              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Sector</span> <strong id="cam-sector"></strong></li>
+              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Documentation Coverage</span> <strong style="color: var(--imperial-indigo); font-size: 1.1rem;">${coveragePercent}%</strong></li>
               <li style="margin-top: 25px; font-size: 0.95rem; padding-top: 15px; border-top: 1px dashed var(--antique-gold);">
                 <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Recommendation</span> <br>
-                ${score >= 55 ? '<span style="color:#1B4965; font-weight:800; font-size: 1.1rem;">PROCEED (CIVILIZATIONAL GRADE)</span>' : '<span style="color:#8B2942; font-weight:800; font-size: 1.1rem;">REVIEW (HIGH FRICTION)</span>'}
+                <span style="color:${missingDocs.length === 0 ? '#1B4965' : '#8B2942'}; font-weight:800; font-size: 1.05rem;">${recommendation}</span>
               </li>
             </ul>
           </div>
-
           <div>
-            <h4 style="margin-bottom: 25px; font-size: 1.1rem; color: var(--imperial-indigo); border-bottom: 1px solid var(--antique-gold); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Credit Governance Metrics</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
-              <div style="background: var(--ivory-card); padding: 22px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
-                <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 1px;">DSCR</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: var(--imperial-indigo);">${dscr.toFixed(2)}x</div>
+            <h4 style="margin-bottom: 25px; font-size: 1.1rem; color: var(--imperial-indigo); border-bottom: 1px solid var(--antique-gold); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Documentation Readiness</h4>
+            <div style="margin-bottom: 20px; background: var(--ivory-card); padding: 24px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 0.9rem; font-weight: 800; color: var(--imperial-indigo);">Coverage Progress</span>
+                <span style="font-weight: 900; color: var(--antique-gold);">${coveragePercent}%</span>
               </div>
-              <div style="background: var(--ivory-card); padding: 22px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
-                <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 1px;">LEVERAGE</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: var(--imperial-indigo);">${leverage.toFixed(2)}x</div>
-              </div>
-              <div style="background: var(--ivory-card); padding: 22px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
-                <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 1px;">COVERAGE</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: var(--imperial-indigo);">${cover.toFixed(2)}x</div>
+              <div style="height: 10px; background: var(--sandstone-ash); border-radius: 0; overflow: hidden; border: 1px solid var(--border-gold);">
+                <div style="width: ${coveragePercent}%; height: 100%; background: var(--antique-gold);"></div>
               </div>
             </div>
-
-            <div style="margin-top: 35px; background: var(--ivory-card); padding: 35px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
-               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                  <span style="font-size: 0.9rem; font-weight: 800; color: var(--imperial-indigo); text-transform: uppercase; letter-spacing: 1px;">Arthashastra Risk Score</span>
-                  <span style="font-size: 1.4rem; font-weight: 900; color: var(--antique-gold);">${score}/100</span>
-               </div>
-               <div style="height: 10px; background: var(--sandstone-ash); border-radius: 0; overflow: hidden; border: 1px solid var(--border-gold);">
-                <div style="width: ${score}%; height: 100%; background: var(--antique-gold);"></div>
-               </div>
-               <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; line-height: 1.5;">Calculated via algorithmic alignment with Five Cs principles (Character, Capacity, Capital, Collateral, Conditions).</p>
-            </div>
+            <ul style="list-style: none; margin: 0; padding: 0; background: var(--ivory-card); padding: 10px 20px; border: 1px solid var(--border-gold); border-radius: 4px; box-shadow: var(--shadow-ancient);">
+              ${docStatusHtml}
+            </ul>
           </div>
         </div>
-
         <div style="margin-top: 50px; text-align: right; border-top: 2px solid var(--antique-gold); padding-top: 30px; display: flex; justify-content: flex-end; gap: 20px;">
-          <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--imperial-indigo); color: var(--imperial-indigo);" onclick="window.print()">Print Intelligence Memo</button>
+          <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--imperial-indigo); color: var(--imperial-indigo);" onclick="window.print()">Print Documentation Memo</button>
           <button class="btn btn-primary" style="padding: 14px 30px;" onclick="archiveCurrentCase(this)">Archive in Dharma Ledger</button>
         </div>
       `;
 
-      // Store globally for archival with FULL details
+      // Safely set user-provided content
+      if (q('#cam-company-name')) q('#cam-company-name').textContent = data.company;
+      if (q('#cam-promoters')) q('#cam-promoters').textContent = data.promoters;
+      if (q('#cam-sector')) q('#cam-sector').textContent = data.sector;
+
+      // Store globally for archival with concise details
       window.currentCaseMetrics = {
         company: data.company,
         promoters: data.promoters,
         sector: data.sector,
         grade: grade,
         riskClass: riskClass,
-        metrics: {
-          ebitda: q('#ebitda').value || '0',
-          debtService: q('#debtService').value || '0',
-          facility: q('#facility').value || '0',
-          approvedAmount: approvedAmount.toString(),
-          networth: q('#networth').value || '0',
-          leverage: leverage.toFixed(2),
-          dscr: dscr.toFixed(2)
-        }
+        docs: data.docs,
+        coveragePercent: coveragePercent,
+        score: score
       };
 
       camOutput.classList.remove('hidden');
@@ -494,15 +475,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const row = document.createElement('tr');
         row.style.animation = 'fadeInUp 0.4s both';
-        row.innerHTML = `
-          <td>${c.id}</td>
-          <td>${c.company}</td>
-          <td>${c.sector}</td>
-          <td><span class="risk-tag ${displayRiskClass}">${c.grade}</span></td>
-          <td>${c.status}</td>
-          <td>${c.date}</td>
-          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View Case</a></td>
-        `;
+        row.innerHTML = `<td></td><td></td><td></td>
+          <td><span class="risk-tag ${displayRiskClass}"></span></td>
+          <td></td><td></td>
+          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View Case</a></td>`;
+
+        row.cells[0].textContent = c.id;
+        row.cells[1].textContent = c.company;
+        row.cells[2].textContent = c.sector;
+        row.cells[3].querySelector('.risk-tag').textContent = c.grade;
+        row.cells[4].textContent = c.status;
+        row.cells[5].textContent = c.date;
+
         allCasesBody.prepend(row);
       }
 
@@ -515,13 +499,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const row = document.createElement('tr');
         row.style.animation = 'fadeInUp 0.4s both';
-        row.innerHTML = `
-          <td>${c.company}</td>
-          <td><span class="risk-tag ${displayRiskClass}">${c.grade}</span></td>
-          <td>${c.status}</td>
-          <td>${c.date}</td>
-          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View</a></td>
-        `;
+        row.innerHTML = `<td></td>
+          <td><span class="risk-tag ${displayRiskClass}"></span></td>
+          <td></td><td></td>
+          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View</a></td>`;
+
+        row.cells[0].textContent = c.company;
+        row.cells[1].querySelector('.risk-tag').textContent = c.grade;
+        row.cells[2].textContent = c.status;
+        row.cells[3].textContent = c.date;
         recentCasesBody.prepend(row);
       }
     });

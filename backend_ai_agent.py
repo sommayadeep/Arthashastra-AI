@@ -23,16 +23,23 @@ Scope:
 - Management changes
 - Policy rate changes
 - Banking reforms
+- Corporate Filings (MCA)
+- Legal Disputes (e-Courts)
+- Sectoral News & Trends
+- Rating Agency Reports
+- Management Interviews & Due Diligence Notes
 
 Data Requirements:
 1. Fetch news from last 7 days (default)
 2. Categorize into:
-   - Regulatory Updates
-   - Financial Performance
-   - Credit & NPA
-   - Governance / Management
+   - Regulatory Updates (RBI, SEBI)
+   - Financial Performance (Results, Outlook)
+   - Credit & NPA (Defaults, Bad Loans)
+   - Governance / Management (Changes, Shareholding pattern)
    - Market / Share Price
    - Fraud / Compliance
+   - Legal / Litigations (e-Courts, NCLT)
+   - Primary Insights (Site Visits, Interviews)
 3. Provide:
    - Headline
    - Source
