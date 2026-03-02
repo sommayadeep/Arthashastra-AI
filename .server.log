@@ -221,3 +221,213 @@
 127.0.0.1 - - [02/Mar/2026 11:59:33] "GET /logo.png HTTP/1.1" 404 -
 127.0.0.1 - - [02/Mar/2026 11:59:33] "GET /styles.css?v=8 HTTP/1.1" 200 -
 127.0.0.1 - - [02/Mar/2026 11:59:33] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:02:21] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:02:21] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:03:22] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:03:22] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:06:59] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:06:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:06:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:06:59] "GET /script.js?v=8 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:06:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:06:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:06:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:06:59] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:08:13] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:08:14] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:08:14] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:13:43] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:13:43] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:13:43] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:13:43] "GET /script.js?v=8 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:13:43] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:13:43] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:20:13] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:20:13] "GET /script.js?v=8 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:33] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:23:33] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:33] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:33] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:33] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:34] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:23:34] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:34] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:34] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:34] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:35] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:23:35] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:35] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:23:35] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:23:35] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:24] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:24] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 12:30:25] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 12:30:25] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:11:31] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:11:31] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:11:31] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:11:31] "GET /script.js?v=8 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:11:31] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:11:31] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:58] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:58] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:58] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:58] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:58] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /styles.css?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /script.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:12:59] "GET /image.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:13:00] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:00] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:48] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:48] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:48] "GET /script.js?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:13:48] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:48] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:51] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:51] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:52] "GET /script.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:13:52] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:52] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:53] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:13:53] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:53] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:54] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:54] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:54] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:54] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:56] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:56] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:13:56] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:13:56] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:11] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:11] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:11] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:11] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:20] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:20] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:20] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:20] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:22] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:14:22] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:22] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:14:22] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:14:22] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:19:04] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:19:04] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:19:04] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:19:04] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:13] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:13] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:15] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:15] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:16] "GET /new-case.html HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:20:16] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:16] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:20:16] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:20:16] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:36:23] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:36:23] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:36:23] "GET /script.js?v=5 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:36:23] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:36:23] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:36:31] "GET /new-case.html HTTP/1.1" 200 -
+127.0.0.1 - - [02/Mar/2026 14:36:31] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:36:31] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [02/Mar/2026 14:36:31] "GET /script.js?v=8 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Mar/2026 14:36:31] code 404, message File not found
+127.0.0.1 - - [02/Mar/2026 14:36:31] "GET /logo.png HTTP/1.1" 404 -

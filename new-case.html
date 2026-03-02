@@ -18,7 +18,7 @@
 
 <body>
 
-    <header class="navbar"> 
+    <header class="navbar">
         <div class="nav-container">
             <a href="index.html" class="brand">
                 <img src="logo.png" alt="Logo" class="logo" onerror="this.src='image.png'">
@@ -134,28 +134,34 @@
                     <!-- FINANCIAL INPUTS -->
                     <section class="form-section">
                         <h3>3. Financial Inputs</h3>
-                        <p style="margin: 10px 0 20px; color: var(--text-secondary); font-weight: 800;">Only upload these three: GST Filings (12M), ITRs (3Y), Bank Statements (12M).</p>
-                        <div class="doc-upload-grid">
-                            <div class="upload-item">
-                                <span>GST Filings (12M)</span>
-                                <input type="file" hidden id="gst_financials">
-                                <button type="button" class="btn"
-                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('gst_financials').click()">Select</button>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">EBITDA (₹ Cr)</label>
+                                <input type="number" id="ebitda" class="input-box" placeholder="Operating profit"
+                                    step="any">
                             </div>
-                            <div class="upload-item">
-                                <span>ITRs (3Y)</span>
-                                <input type="file" hidden id="itr_financials">
-                                <button type="button" class="btn"
-                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('itr_financials').click()">Select</button>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Debt Service (₹
+                                    Cr)</label>
+                                <input type="number" id="debtService" class="input-box"
+                                    placeholder="Annual debt obligations" step="any">
                             </div>
-                            <div class="upload-item">
-                                <span>Bank Statements (12M)</span>
-                                <input type="file" hidden id="bank_financials">
-                                <button type="button" class="btn"
-                                    style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('bank_financials').click()">Select</button>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Net Worth (₹ Cr)</label>
+                                <input type="number" id="networth" class="input-box" placeholder="Tangible net worth"
+                                    step="any">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Proposed Facility (₹
+                                    Cr)</label>
+                                <input type="number" id="facility" class="input-box" placeholder="Requested loan amount"
+                                    step="any">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label style="font-weight: 800; color: var(--imperial-indigo);">Collateral Value (₹
+                                    Cr)</label>
+                                <input type="number" id="collateral" class="input-box" placeholder="Security valuation"
+                                    step="any">
                             </div>
                         </div>
                     </section>
