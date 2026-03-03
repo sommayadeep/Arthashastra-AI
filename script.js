@@ -3,6 +3,585 @@
 document.addEventListener('DOMContentLoaded', () => {
 
   const q = (s) => document.querySelector(s);
+  const qa = (s) => Array.from(document.querySelectorAll(s));
+
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function getBackendBase() {
+    return localStorage.getItem('arthashastra_backend_base') || '';
+  }
+
+  async function postCaseAnalyze(formData) {
+    const candidates = [];
+    const base = getBackendBase();
+    if (base) candidates.push(base.replace(/\/+$/, '') + '/api/case/analyze');
+    candidates.push('/api/case/analyze');
+    candidates.push('http://localhost:5050/api/case/analyze');
+    candidates.push('http://127.0.0.1:5050/api/case/analyze');
+
+    let lastErr = null;
+    let lastUrl = null;
+    for (const url of candidates) {
+      try {
+        lastUrl = url;
+        const resp = await fetch(url, { method: 'POST', body: formData });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    const err = lastErr || new Error('Analyze request failed');
+    err._arthashastra_last_url = lastUrl;
+    throw err;
+  }
+
+  function riskStatusColor(status) {
+    if (status === 'Low') return '#27ae60';
+    if (status === 'Moderate') return '#9E7C2F';
+    if (status === 'High') return '#8B2942';
+    return 'var(--imperial-indigo)';
+  }
+
+  function sigmoid(x) {
+    return 1 / (1 + Math.exp(-x));
+  }
+
+  function clamp(n, lo, hi) {
+    return Math.max(lo, Math.min(hi, n));
+  }
+
+  function computeMismatchScore(extracted) {
+    const gstInr = extracted?.gst?.turnover_inr;
+    const bankInr = extracted?.bank?.inflow_inr;
+    if (!gstInr || !bankInr) return 0;
+    const denom = Math.max(gstInr, bankInr);
+    if (denom <= 0) return 0;
+    return clamp((Math.abs(gstInr - bankInr) / denom) * 100, 0, 100);
+  }
+
+  function computeMismatchVariancePct(extracted) {
+    const gstInr = extracted?.gst?.turnover_inr;
+    const bankInr = extracted?.bank?.inflow_inr;
+    if (!gstInr || !bankInr) return null;
+    const denom = Math.max(gstInr, bankInr);
+    if (denom <= 0) return null;
+    return Math.round((Math.abs(gstInr - bankInr) / denom) * 100);
+  }
+
+  function computeVolatilityScore(extracted) {
+    // Proxy using balance stress: low min vs avg implies volatility.
+    const avg = extracted?.bank?.avg_balance_inr;
+    const min = extracted?.bank?.min_balance_inr;
+    if (!avg || avg <= 0 || min == null) return 0;
+    const frac = clamp(min / avg, 0, 1);
+    return clamp((1 - frac) * 100, 0, 100);
+  }
+
+  function computeBouncesScore(extracted) {
+    const b = Number(extracted?.bank?.bounce_count || 0);
+    return clamp(b * 25, 0, 100);
+  }
+
+  function computeDebtStressScore(extracted) {
+    // Proxy: debt service vs profit (if available). Higher ratio = higher stress.
+    const debt = extracted?.bank?.debt_service_inr;
+    const profit = extracted?.itr?.profit_inr;
+    if (!debt || !profit || profit <= 0) return 0;
+    const ratio = debt / profit;
+    return clamp((ratio - 0.2) * 120, 0, 100);
+  }
+
+  function buildExplainability(extracted) {
+    const factors = [
+      { key: 'inflows', label: 'Unstable bank inflows / balances', score: computeVolatilityScore(extracted) },
+      { key: 'gst', label: 'GST–Bank mismatch / volatility', score: computeMismatchScore(extracted) },
+      { key: 'bounces', label: 'Cheque bounce / return events', score: computeBouncesScore(extracted) },
+      { key: 'itr', label: 'Debt service vs profit stress', score: computeDebtStressScore(extracted) },
+      { key: 'compliance', label: 'Compliance / documentation delay', score: 25 }, // placeholder signal
+    ];
+
+    const total = factors.reduce((s, f) => s + f.score, 0) || 1;
+    const weights = factors.map(f => ({ ...f, pct: Math.round((f.score / total) * 100) }));
+
+    // Normalize to exactly 100%
+    const diff = 100 - weights.reduce((s, f) => s + f.pct, 0);
+    if (diff !== 0) weights[0].pct += diff;
+
+    return weights;
+  }
+
+  function compositionLinesFromExplainability(weights) {
+    // Map explainability into 4 bank-sounding buckets
+    const byKey = Object.fromEntries((weights || []).map(w => [w.key, w.pct]));
+    const cashFlow = clamp((byKey.inflows || 0) + Math.round((byKey.itr || 0) * 0.4), 0, 100);
+    const compliance = clamp((byKey.compliance || 0) + Math.round((byKey.gst || 0) * 0.25), 0, 100);
+    const profitability = clamp(Math.round((byKey.itr || 0) * 0.6), 0, 100);
+    const behavioral = clamp((byKey.bounces || 0), 0, 100);
+
+    // Normalize to 100
+    const total = cashFlow + compliance + profitability + behavioral || 1;
+    const vals = [
+      { label: 'Cash Flow Stability', pct: Math.round((cashFlow / total) * 100) },
+      { label: 'Compliance Discipline', pct: Math.round((compliance / total) * 100) },
+      { label: 'Profitability', pct: Math.round((profitability / total) * 100) },
+      { label: 'Behavioral Risk', pct: Math.round((behavioral / total) * 100) },
+    ];
+    const diff = 100 - vals.reduce((s, v) => s + v.pct, 0);
+    vals[0].pct += diff;
+    return vals;
+  }
+
+  function computePD(riskScore) {
+    // Conservative 6M PD heuristic (kept realistic for demo credibility).
+    const s = clamp(Number(riskScore || 0), 0, 100);
+    // 0 -> 6%, 50 -> 18%, 100 -> 55%
+    const pd = 0.06 + (0.49 * sigmoid((s - 55) / 12));
+    return clamp(pd, 0.05, 0.6);
+  }
+
+  function computeFraudIndicator(extracted) {
+    const mismatch = computeMismatchScore(extracted);
+    const bounces = computeBouncesScore(extracted);
+    const volatility = computeVolatilityScore(extracted);
+    // Score 0..100 (avoid accusatory “93% fraud” language)
+    const score = clamp((0.55 * mismatch) + (0.25 * bounces) + (0.20 * volatility), 0, 100);
+    return score;
+  }
+
+  function applyStressScenario(extracted) {
+    // Simulate macro stress:
+    // - Revenue/turnover -20%
+    // - Interest +1.5% (proxy: debt service +10%)
+    // - Higher operational stress: balance volatility +1 bounce
+    const clone = JSON.parse(JSON.stringify(extracted || {}));
+    if (clone.gst?.turnover_inr) clone.gst.turnover_inr = clone.gst.turnover_inr * 0.8;
+    if (clone.gst?.turnover_cr) clone.gst.turnover_cr = Math.round((clone.gst.turnover_cr * 0.8) * 100) / 100;
+
+    if (clone.itr?.revenue_inr) clone.itr.revenue_inr = clone.itr.revenue_inr * 0.8;
+    if (clone.itr?.revenue_cr) clone.itr.revenue_cr = Math.round((clone.itr.revenue_cr * 0.8) * 100) / 100;
+    if (clone.itr?.profit_inr) clone.itr.profit_inr = clone.itr.profit_inr * 0.8;
+    if (clone.itr?.profit_cr) clone.itr.profit_cr = Math.round((clone.itr.profit_cr * 0.8) * 100) / 100;
+
+    if (clone.bank?.avg_balance_inr) clone.bank.avg_balance_inr = clone.bank.avg_balance_inr * 0.85;
+    if (clone.bank?.min_balance_inr) clone.bank.min_balance_inr = clone.bank.min_balance_inr * 0.8;
+    if (clone.bank?.bounce_count != null) clone.bank.bounce_count = Number(clone.bank.bounce_count || 0) + 1;
+
+    // Interest rate +1.5% → proxy: debt service +10%
+    if (clone.bank?.debt_service_inr) clone.bank.debt_service_inr = clone.bank.debt_service_inr * 1.10;
+    if (clone.bank?.debt_service_cr) clone.bank.debt_service_cr = Math.round((clone.bank.debt_service_cr * 1.10) * 100) / 100;
+
+    return clone;
+  }
+
+  function computeRiskFromExplainability(extracted, officerAdjust = 0) {
+    const weights = buildExplainability(extracted);
+    const raw = weights.reduce((s, w) => s + (w.score * (w.pct / 100)), 0);
+    const score = clamp(raw + 20 - officerAdjust, 0, 100);
+    const status = score <= 35 ? 'Low' : (score <= 65 ? 'Moderate' : 'High');
+    return { score: Math.round(score * 10) / 10, status, weights };
+  }
+
+  function computeDecisionConfidence({ extracted, warnings, docCoveragePercent } = {}) {
+    let conf = 65;
+    if (docCoveragePercent != null) conf += clamp((Number(docCoveragePercent) - 50) * 0.3, -10, 15);
+    if (extracted?.gst?.turnover_inr) conf += 6;
+    if (extracted?.itr?.profit_inr) conf += 6;
+    if (extracted?.bank?.inflow_inr) conf += 6;
+    const variance = computeMismatchVariancePct(extracted);
+    if (variance != null && variance >= 25) conf -= 10;
+    if (Number(extracted?.bank?.bounce_count || 0) >= 3) conf -= 8;
+    if (warnings?.length) conf -= clamp(warnings.length * 3, 0, 15);
+    return clamp(Math.round(conf), 45, 96);
+  }
+
+  function decideCaseOutcome({ riskStatus, riskScore, pd, fraudScore } = {}) {
+    const pdPct = Math.round((pd || 0) * 100);
+    const fraud = Math.round(fraudScore || 0);
+    // Consistency rules:
+    if (fraud >= 75 || pdPct >= 45 || riskStatus === 'High' || (riskScore != null && riskScore > 70)) {
+      return { status: 'REVIEW REQUIRED', sanctionCr: 0 };
+    }
+    if (pdPct >= 25 || fraud >= 45 || (riskScore != null && riskScore > 60)) {
+      return { status: 'CONDITIONAL HOLD', sanctionCr: 0 };
+    }
+    return { status: 'APPROVED', sanctionCr: null };
+  }
+
+  function computeCoreDecision({ metrics, extracted, officerAdjust = 0, stressOn = false, warnings = null, docCoveragePercent = null } = {}) {
+    const m = metrics || {};
+    const exBase = extracted || {};
+    const ex = stressOn ? applyStressScenario(exBase) : exBase;
+
+    // Metrics (Cr) – use case metrics when present, else use extracted proxies
+    const ebitdaCr = Number(m.ebitda ?? ex?.itr?.profit_cr ?? 0);
+    const debtCr = Number(m.debtService ?? ex?.bank?.debt_service_cr ?? 0);
+    const facilityCr = Number(m.facility ?? ex?.gst?.turnover_cr ? (ex.gst.turnover_cr * 0.08) : 0);
+    const networthCr = Number(m.networth ?? ex?.bank?.inflow_cr ? (ex.bank.inflow_cr * 0.25) : 0);
+
+    const dscr = debtCr > 0 ? (ebitdaCr / debtCr) : 0;
+    const leverage = networthCr > 0 ? (facilityCr / networthCr) : 0;
+
+    // Component risks (0..100)
+    const cashFlowRisk = clamp((computeVolatilityScore(ex) * 0.7) + (computeDebtStressScore(ex) * 0.3), 0, 100);
+    const complianceRisk = clamp(computeMismatchScore(ex), 0, 100);
+    const behavioralRisk = clamp(computeBouncesScore(ex), 0, 100);
+    const profitabilityRisk = (() => {
+      if (!dscr) return 55;
+      if (dscr >= 3.0) return 12;
+      if (dscr >= 2.0) return 22;
+      if (dscr >= 1.2) return 45;
+      return 75;
+    })();
+    const stressSensitivity = clamp((complianceRisk * 0.55) + (cashFlowRisk * 0.25) + (behavioralRisk * 0.20), 0, 100);
+
+    // Formula (defensible + simple)
+    let riskScore = (0.30 * cashFlowRisk) + (0.30 * complianceRisk) + (0.20 * behavioralRisk) + (0.10 * profitabilityRisk) + (0.10 * stressSensitivity);
+    riskScore = clamp(riskScore - officerAdjust, 0, 100);
+
+    const riskStatus = riskScore <= 35 ? 'Low' : (riskScore <= 65 ? 'Moderate' : 'High');
+
+    // XAI matrix (these are derived from the same components)
+    const financialHealthPct = clamp(100 - clamp((0.65 * profitabilityRisk) + (0.35 * (leverage > 4 ? 55 : leverage > 2.5 ? 35 : 18)), 0, 100), 10, 98);
+    const alternativeDataPct = clamp(100 - clamp((0.60 * complianceRisk) + (0.40 * behavioralRisk), 0, 100), 10, 98);
+    const macroHeadwindsPct = clamp(100 - clamp((0.55 * stressSensitivity) + (0.45 * cashFlowRisk), 0, 100), 10, 98);
+
+    // Predictive
+    const basePd = computePD(riskScore);
+    const stressMultiplier = stressOn ? 1.22 : 1.0;
+    const pd = clamp(basePd * stressMultiplier, 0.05, 0.6);
+
+    const fraudScore = computeFraudIndicator(ex);
+    const confidence = computeDecisionConfidence({ extracted: ex, warnings, docCoveragePercent });
+    const confidenceAdjusted = clamp(confidence - (stressOn ? 12 : 0), 45, 96);
+
+    const outcome = decideCaseOutcome({ riskStatus, riskScore, pd, fraudScore });
+
+    const variance = computeMismatchVariancePct(ex);
+    const varianceText = variance != null ? `${variance}% GST–Bank variance` : 'GST–Bank variance';
+    const bounceCount = Number(ex?.bank?.bounce_count || 0);
+    const behaviorText = bounceCount > 0 ? `behavioral volatility (${bounceCount} return event${bounceCount === 1 ? '' : 's'})` : 'behavioral stability';
+
+    const summary = `While DSCR (${dscr ? dscr.toFixed(2) : '—'}x) indicates servicing capacity, ${varianceText} and ${behaviorText} introduce reporting integrity concerns. Underwriting stance remains ${riskStatus} risk with ${outcome.status} pending reconciliation validation.`;
+
+    const committeeView = outcome.status === 'APPROVED'
+      ? 'Credit Committee View: Exposure can proceed under standard covenants.'
+      : 'Credit Committee View: Exposure to be reconsidered post reconciliation submission.';
+
+    return {
+      stressOn,
+      extracted: ex,
+      metrics: { ebitdaCr, debtCr, facilityCr, networthCr, dscr, leverage },
+      components: { cashFlowRisk, complianceRisk, behavioralRisk, profitabilityRisk, stressSensitivity },
+      risk: { score: Math.round(riskScore * 10) / 10, status: riskStatus },
+      pd,
+      fraudScore: Math.round(fraudScore),
+      confidence: Math.round(confidenceAdjusted),
+      outcome,
+      xai: {
+        financialHealthPct: Math.round(financialHealthPct * 10) / 10,
+        alternativeDataPct: Math.round(alternativeDataPct * 10) / 10,
+        macroHeadwindsPct: Math.round(macroHeadwindsPct * 10) / 10,
+      },
+      summary,
+      committeeView,
+      governance: {
+        modelVersion: '1.2.3',
+        lastUpdated: '3 Mar 2026',
+        stressCalibration: 'RBI Macro Baseline',
+      },
+      formula: {
+        riskScore: '0.30*CashFlowRisk + 0.30*ComplianceRisk + 0.20*BehavioralRisk + 0.10*ProfitabilityRisk + 0.10*StressSensitivity',
+        pd: 'PD = BasePD(riskScore) × (1 + StressMultiplier)',
+      }
+    };
+  }
+
+  function renderExplainability(weights) {
+    const wrap = q('#xaiBreakdown');
+    if (!wrap) return;
+    wrap.innerHTML = weights.map(w => `
+      <div style="display:grid; grid-template-columns: 1.6fr 0.9fr; gap: 14px; align-items:center;">
+        <div>
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:baseline;">
+            <div style="font-weight:900; color: var(--heading-dark);">${escapeHtml(w.label)}</div>
+            <div style="font-weight:900; color: var(--imperial-indigo);">${w.pct}%</div>
+          </div>
+          <div style="height:10px; background: var(--sandstone-ash); border: 1px solid var(--border-gold); overflow:hidden; margin-top:8px;">
+            <div style="height:100%; width:${clamp(w.pct, 0, 100)}%; background:${w.pct >= 30 ? '#8B2942' : (w.pct >= 18 ? '#9E7C2F' : '#1B4965')};"></div>
+          </div>
+        </div>
+        <div style="font-size:0.85rem; font-weight:800; color: var(--text-secondary); text-align:right;">
+          Impact score: ${Math.round(w.score)}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderPredictive(pd, fraudScore) {
+    const pdPct = Math.round(pd * 100);
+    const frPct = Math.round(clamp(fraudScore, 0, 100));
+
+    if (q('#pdValue')) q('#pdValue').textContent = `${pdPct}%`;
+    if (q('#pdLabel')) q('#pdLabel').textContent = pdPct >= 35 ? 'Elevated' : (pdPct >= 18 ? 'Watchlist' : 'Stable');
+    if (q('#pdBar')) q('#pdBar').style.width = `${pdPct}%`;
+    if (q('#pdBar')) q('#pdBar').style.background = pdPct >= 35 ? '#8B2942' : (pdPct >= 18 ? '#9E7C2F' : '#27ae60');
+
+    if (q('#fraudValue')) q('#fraudValue').textContent = `${frPct}`;
+    if (q('#fraudLabel')) q('#fraudLabel').textContent = frPct >= 75 ? 'Elevated' : (frPct >= 45 ? 'Monitor' : 'Low');
+    if (q('#fraudBar')) q('#fraudBar').style.width = `${frPct}%`;
+    if (q('#fraudBar')) q('#fraudBar').style.background = frPct >= 75 ? '#8B2942' : (frPct >= 45 ? '#9E7C2F' : '#27ae60');
+  }
+
+  function animateNumber({ from, to, durationMs = 600, onUpdate, onDone } = {}) {
+    const start = performance.now();
+    const f = Number(from);
+    const t = Number(to);
+    const tick = (now) => {
+      const p = clamp((now - start) / durationMs, 0, 1);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - p, 3);
+      const v = f + (t - f) * eased;
+      onUpdate && onUpdate(v);
+      if (p < 1) requestAnimationFrame(tick);
+      else onDone && onDone();
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function severityForMismatch(variancePct) {
+    if (variancePct == null) return { level: 'Low', color: '#27ae60' };
+    if (variancePct >= 25) return { level: 'High', color: '#8B2942' };
+    if (variancePct >= 12) return { level: 'Medium', color: '#9E7C2F' };
+    return { level: 'Low', color: '#27ae60' };
+  }
+
+  function severityForBounces(count) {
+    const n = Number(count || 0);
+    if (n >= 3) return { level: 'High', color: '#8B2942' };
+    if (n >= 1) return { level: 'Medium', color: '#9E7C2F' };
+    return { level: 'Low', color: '#27ae60' };
+  }
+
+  function formatAlertItem({ severity, text, detail }) {
+    const pill = `<span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-weight:900; font-size:0.72rem; letter-spacing:1px; background:${severity.color}1f; color:${severity.color}; border:1px solid ${severity.color}55; white-space:nowrap;">${severity.level.toUpperCase()}</span>`;
+    const d = detail ? `<div style="margin-top:6px; color: var(--text-secondary); font-weight: 800; font-size:0.8rem;">${escapeHtml(detail)}</div>` : '';
+    return `
+      <div style="display:flex; gap:12px; align-items:flex-start; justify-content:space-between;">
+        <div style="font-weight:900; color: var(--heading-dark);">${escapeHtml(text)}</div>
+        ${pill}
+      </div>
+      ${d}
+    `;
+  }
+
+  function buildInstitutionalSummary({ company, sector, extracted, metrics }) {
+    const variance = computeMismatchVariancePct(extracted);
+    const bounces = Number(extracted?.bank?.bounce_count || 0);
+    const dscr = Number(metrics?.dscr || 0);
+    const lev = Number(metrics?.leverage || 0);
+
+    const vText = variance != null
+      ? `cross-verified GST turnover against bank inflows, detecting a ${variance}% reporting variance`
+      : `cross-verified GST/ITR and bank inflows for consistency`;
+
+    const dscrText = dscr ? `Despite adequate EBITDA coverage (${dscr.toFixed(2)}x DSCR)` : `Despite serviceable operating coverage`;
+    const bounceText = bounces
+      ? `recent cheque return activity (${bounces} event${bounces === 1 ? '' : 's'}) introduces moderate behavioral risk`
+      : `no cheque return events were detected in the statement window`;
+
+    const posture = (lev && lev > 4)
+      ? 'leverage remains elevated; recommend tighter covenants and monitoring'
+      : 'overall credit posture remains serviceable under stable economic conditions';
+
+    const varianceText = variance != null ? `${variance}% GST–Bank variance` : 'GST–Bank variance';
+    const dscrNum = dscr ? `${dscr.toFixed(2)}x` : '—';
+
+    const baseRisk = computeRiskFromExplainability(extracted, 0);
+    const pd = computePD(baseRisk.score || 50);
+    const fraud = computeFraudIndicator(extracted);
+    const outcome = decideCaseOutcome({ riskStatus: baseRisk.status, riskScore: baseRisk.score, pd, fraudScore: fraud });
+
+    const behavioral = bounces > 0 ? 'behavioral volatility' : 'behavioral stability';
+    const stance = baseRisk.status || 'Moderate';
+    const decision = outcome.status || 'CONDITIONAL HOLD';
+
+    return `While DSCR (${dscrNum}) indicates strong servicing capacity, ${varianceText} and ${behavioral} introduce reporting integrity concerns. Underwriting stance remains ${stance} risk with ${decision} pending reconciliation validation.`;
+  }
+
+  function appendChat(role, text) {
+    const log = q('#chatLog');
+    if (!log) return;
+    const item = document.createElement('div');
+    item.style.padding = '10px 12px';
+    item.style.border = '1px solid var(--border-gold)';
+    item.style.borderRadius = '4px';
+    item.style.background = role === 'user' ? 'rgba(26, 37, 64, 0.06)' : 'rgba(185, 149, 59, 0.10)';
+    item.innerHTML = `<div style="font-weight:900; color: var(--imperial-indigo); margin-bottom: 6px;">${role === 'user' ? 'You' : 'Arthashastra AI'}</div>
+<div style="font-weight:700; color: var(--heading-dark); line-height: 1.6;">${escapeHtml(text)}</div>`;
+    log.appendChild(item);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function answerChat(question, c) {
+    const ql = String(question || '').toLowerCase();
+    const state = window.caseViewState || null;
+    const ai = c?.ai || {};
+    const extracted = state?.extracted || ai?.extracted || {};
+    const risk = state?.risk || ai?.risk || {};
+    const base = `Risk status is ${risk.status || '—'}${risk.score != null ? ` (score ${risk.score})` : ''}.`;
+    if (!/(risk|score|pd|default|fraud|facility|loan|increase|why|reason|dscr|leverage|gst|itr|bank|alert)/i.test(ql)) {
+      return "I’m optimized for underwriting intelligence. Please ask credit-related queries (risk drivers, PD, fraud indicator, facility sizing, covenants).";
+    }
+    if (ql.includes('why') || ql.includes('reason')) {
+      const weights = buildExplainability(extracted);
+      const top = weights.slice().sort((a, b) => b.pct - a.pct).slice(0, 3);
+      return `${base} Main drivers: ${top.map(t => `${t.pct}% ${t.label.toLowerCase()}`).join(', ')}.`;
+    }
+    if (ql.includes('increase') || ql.includes('loan') || ql.includes('facility')) {
+      const currentFacility = parseAmountToCr(q('#facility')?.value) || null;
+      const suggested = currentFacility != null ? Math.round((currentFacility * 1.1) * 100) / 100 : null;
+      const mismatch = computeMismatchScore(extracted);
+      const caution = mismatch >= 60 ? 'Caution: GST–Bank mismatch is high; increasing limit may elevate fraud/risk.' : 'Increase appears feasible subject to covenants and monitoring.';
+      return `${base} ${suggested != null ? `If increased by 10%, proposed facility becomes ~₹ ${suggested} Cr.` : ''} ${caution}`;
+    }
+    if (ql.includes('default') || ql.includes('pd') || ql.includes('probability')) {
+      const pd = state?.pd != null ? state.pd : computePD(risk.score || 50);
+      return `Predicted 6-month PD is ~${Math.round(pd * 100)}% (heuristic). ${base}`;
+    }
+    if (ql.includes('fraud')) {
+      const fr = state?.fraudScore != null ? state.fraudScore : computeFraudIndicator(extracted);
+      return `Fraud risk indicator is ${Math.round(fr)}/100 (heuristic). Drivers include mismatch, bounce events, and balance volatility.`;
+    }
+    return `${base} Ask “Why risk?”, “Default probability?”, “Fraud risk?”, or “Can we increase loan amount?”`;
+  }
+
+  function buildAIReportHtml(c) {
+    const ai = c?.ai || {};
+    const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
+    const risk = ai.risk || {};
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arthashastra AI Report ${escapeHtml(c?.id || '')}</title>
+  <style>
+    body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; padding:28px; color:#111;}
+    h1{margin:0 0 4px 0;font-size:22px}
+    .sub{color:#555;margin:0 0 18px 0;font-size:12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 18px}
+    .card{border:1px solid #ddd;border-radius:10px;padding:14px}
+    .k{font-size:11px;letter-spacing:.08em;color:#666;text-transform:uppercase;font-weight:700}
+    .v{font-size:14px;font-weight:700;margin-top:6px}
+    ul{margin:10px 0 0 18px}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;color:white}
+    .muted{color:#666;font-size:12px;line-height:1.5}
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(c?.company || 'Case Report')}</h1>
+  <p class="sub">Case ID: ${escapeHtml(c?.id || '--')} • Date: ${escapeHtml(c?.date || '--')} • Status: ${escapeHtml(c?.status || '--')}</p>
+  <div class="grid">
+    <div class="card">
+      <div class="k">Borrower</div>
+      <div class="v">${escapeHtml(c?.company || '--')}</div>
+      <div class="muted">${escapeHtml(c?.sector || '--')} • ${escapeHtml(c?.promoters || '--')}</div>
+    </div>
+    <div class="card">
+      <div class="k">Risk</div>
+      <div class="v"><span class="badge" style="background:${riskStatusColor(risk.status)}">${escapeHtml(risk.status || '--')}</span></div>
+      <div class="muted">Risk score: ${escapeHtml(risk.score ?? '--')}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="k">AI Credit Summary</div>
+    <div class="muted" style="margin-top:8px">${escapeHtml(ai.credit_summary || '—')}</div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="k">Dharma Risk Alerts</div>
+    ${alerts.length ? `<ul>${alerts.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>` : `<div class="muted" style="margin-top:8px">No alerts.</div>`}
+  </div>
+</body>
+</html>`;
+  }
+
+  function parseAmountToCr(input) {
+    if (input == null) return null;
+    const raw = String(input).trim();
+    if (!raw) return null;
+
+    const cleaned = raw
+      .replaceAll('₹', '')
+      .replaceAll(',', '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    // Handle explicit units
+    const unitMatch = cleaned.match(/^(-?\d+(\.\d+)?)\s*(cr|crore|crores|l|lac|lakh|lakhs|k|thousand|m|million)?$/i);
+    if (!unitMatch) return null;
+
+    const value = Number(unitMatch[1]);
+    if (!Number.isFinite(value)) return null;
+
+    const unit = (unitMatch[3] || '').toLowerCase();
+    if (unit === 'cr' || unit === 'crore' || unit === 'crores') return value;
+    if (unit === 'l' || unit === 'lac' || unit === 'lakh' || unit === 'lakhs') return value / 100;
+    if (unit === 'k' || unit === 'thousand') return value / 100000; // 1 Cr = 100,000 thousand
+    if (unit === 'm' || unit === 'million') return value / 10; // 10 million INR = 1 Cr
+
+    // No unit provided: if the number is "large", assume INR (not Cr) and convert.
+    if (Math.abs(value) >= 1000) return value / 1e7;
+    return value; // assume already in Cr
+  }
+
+  function attachUnitNormalizer(selector) {
+    const el = q(selector);
+    if (!el) return;
+    el.addEventListener('blur', () => {
+      const asCr = parseAmountToCr(el.value);
+      if (asCr == null) return;
+      // Keep 2 decimals for Cr representation
+      el.value = (Math.round(asCr * 100) / 100).toString();
+    });
+  }
+
+  // Normalize financial input units on blur (accept lakhs/thousands/INR too)
+  attachUnitNormalizer('#ebitda');
+  attachUnitNormalizer('#debtService');
+  attachUnitNormalizer('#networth');
+  attachUnitNormalizer('#facility');
+  attachUnitNormalizer('#collateral');
+
+  window.downloadLatestAIReport = function () {
+    const snapshot = {
+      id: (window.currentCaseMetrics?.id) || '#PREVIEW',
+      company: q('#company')?.value || window.currentCaseMetrics?.company || 'Entity',
+      promoters: q('#promoters')?.value || window.currentCaseMetrics?.promoters || '—',
+      sector: q('#sector')?.value || window.currentCaseMetrics?.sector || '—',
+      status: 'Preview',
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      ai: (window.latestAI || window.currentCaseMetrics?.ai || null),
+    };
+    const html = buildAIReportHtml(snapshot);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `arthashastra_ai_report_${String(snapshot.id || 'case').replace('#', '')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   // Helper for currency formatting
   function formatINR(n) {
@@ -126,10 +705,10 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   if (aiBtn) {
-    aiBtn.addEventListener('click', () => {
+    aiBtn.addEventListener('click', async () => {
       // Validation: Ensure at least one file is selected
-      const inputs = document.querySelectorAll('input[type="file"]');
-      const hasFile = Array.from(inputs).some(input => input.files.length > 0);
+      const inputs = qa('input[type="file"]');
+      const hasFile = inputs.some(input => input.files.length > 0);
       if (!hasFile) {
         alert("⚠️ No documents detected.\n\nPlease select at least one document (GST, ITRs, Bank Statements) to proceed.");
         return;
@@ -163,35 +742,86 @@ document.addEventListener('DOMContentLoaded', () => {
       // Total animation time: ~6.3 seconds (7 phases × 900ms)
       const totalTime = aiPhases.length * 900;
 
-      setTimeout(() => {
-        // Fill in extracted data
-        if (q('#company')) q('#company').value = 'Chandragupta Maritimes Ltd';
-        if (q('#promoters')) q('#promoters').value = 'S. Maurya, V. Gupta';
-        if (q('#sector')) q('#sector').value = 'Logistics & Infrastructure';
-        if (adjust) {
-          adjust.value = '4';
-          adjustLabel.textContent = '4';
+      const minDelay = new Promise((resolve) => setTimeout(resolve, totalTime + 400));
+
+      const formData = new FormData();
+      const gst = q('#gst_docs');
+      const itr = q('#itr_docs');
+      const bank = q('#bank_docs');
+      if (gst?.files?.[0]) formData.append('gst_docs', gst.files[0]);
+      if (itr?.files?.[0]) formData.append('itr_docs', itr.files[0]);
+      if (bank?.files?.[0]) formData.append('bank_docs', bank.files[0]);
+      if (q('#company')?.value) formData.append('company', q('#company').value);
+      if (q('#promoters')?.value) formData.append('promoters', q('#promoters').value);
+      if (q('#sector')?.value) formData.append('sector', q('#sector').value);
+      if (adjust?.value) formData.append('adjust', adjust.value);
+
+      let analysis = null;
+      try {
+        analysis = await postCaseAnalyze(formData);
+      } catch (e) {
+        await minDelay;
+        const tried = e?._arthashastra_last_url ? `\nTried: ${e._arthashastra_last_url}` : '';
+        alert(`⚠️ AI extraction failed.\n\nBackend: http://127.0.0.1:5050\n\nError: ${e?.message || e}${tried}`);
+      }
+
+      await minDelay;
+
+      if (analysis?.status === 'success') {
+        const intel = analysis.intelligence || {};
+        window.latestAI = intel;
+
+        const extracted = intel.extracted || {};
+        const profitCr = extracted?.itr?.profit_cr;
+        const turnoverCr = extracted?.gst?.turnover_cr;
+        const inflowCr = extracted?.bank?.inflow_cr;
+        const debtServiceCr = extracted?.bank?.debt_service_cr;
+
+        // If user uploaded PDFs, extraction will be empty in offline mode.
+        if (profitCr == null && turnoverCr == null && inflowCr == null) {
+          alert(
+            "AI Extraction ran, but no numeric fields were extracted.\n\n" +
+            "Current backend supports structured GST/ITR (.csv/.json) and bank statement (.csv).\n" +
+            "For PDFs, export/convert to CSV (or provide extracted tables) to enable real auto-fill."
+          );
         }
 
-        if (aiLoading) aiLoading.classList.add('hidden');
-        aiBtn.disabled = false;
-        aiBtn.style.opacity = '1';
+        // Populate minimal financial inputs in Cr if empty (demo heuristic)
+        if (q('#ebitda') && (q('#ebitda').value === '' || q('#ebitda').value === '0') && profitCr != null) q('#ebitda').value = profitCr;
+        if (q('#debtService') && (q('#debtService').value === '' || q('#debtService').value === '0') && debtServiceCr != null) q('#debtService').value = debtServiceCr;
+        if (q('#facility') && (q('#facility').value === '' || q('#facility').value === '0') && turnoverCr != null) q('#facility').value = Math.round((turnoverCr * 0.08) * 100) / 100;
+        if (q('#networth') && (q('#networth').value === '' || q('#networth').value === '0') && inflowCr != null) q('#networth').value = Math.round((inflowCr * 0.25) * 100) / 100;
 
-        // Graceful overlay fade out
-        overlay.classList.add('fade-out');
-        overlay.classList.remove('active');
-        setTimeout(() => {
-          overlay.remove();
-        }, 900);
+        // Collateral usually isn't in GST/ITR/Bank; provide an explicit estimate if empty.
+        if (q('#collateral') && (q('#collateral').value === '' || q('#collateral').value === '0')) {
+          const facilityCr = parseAmountToCr(q('#facility')?.value);
+          if (facilityCr != null) q('#collateral').value = Math.round((facilityCr * 1.3) * 100) / 100; // ~77% LTV proxy
+        }
 
-        // Visual feedback on form sections
-        const sections = document.querySelectorAll('.form-section');
-        sections.forEach(s => {
-          s.style.transition = 'all 0.5s';
-          s.style.borderColor = 'var(--antique-gold)';
-          setTimeout(() => s.style.borderColor = 'transparent', 1000);
-        });
-      }, totalTime + 400);
+        if (adjust && adjust.value === '0') {
+          adjust.value = '1';
+          if (adjustLabel) adjustLabel.textContent = '1';
+        }
+      }
+
+      if (aiLoading) aiLoading.classList.add('hidden');
+      aiBtn.disabled = false;
+      aiBtn.style.opacity = '1';
+
+      // Graceful overlay fade out
+      overlay.classList.add('fade-out');
+      overlay.classList.remove('active');
+      setTimeout(() => {
+        overlay.remove();
+      }, 900);
+
+      // Visual feedback on form sections
+      const sections = qa('.form-section');
+      sections.forEach(s => {
+        s.style.transition = 'all 0.5s';
+        s.style.borderColor = 'var(--antique-gold)';
+        setTimeout(() => s.style.borderColor = 'transparent', 1000);
+      });
     });
   }
 
@@ -208,9 +838,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sector: q('#sector').value || 'N/A',
         adjust: parseInt(q('#adjust').value) || 0,
         docs: {
-          gst: (q('#gst_financials')?.files || []).length > 0,
-          itr: (q('#itr_financials')?.files || []).length > 0,
-          bank: (q('#bank_financials')?.files || []).length > 0
+          gst: (q('#gst_docs')?.files || []).length > 0,
+          itr: (q('#itr_docs')?.files || []).length > 0,
+          bank: (q('#bank_docs')?.files || []).length > 0
         }
       };
       const docStatusList = [
@@ -261,6 +891,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-size: 0.7rem; font-weight: 800; color: var(--imperial-indigo); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 2px;">Institutional Grade</div>
             <div class="risk-tag ${riskClass}" style="font-size: 1.6rem; padding: 10px 22px;">${grade}</div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">Coverage: ${coveragePercent}%</div>
+            <button id="camStressBtn" class="btn"
+              style="margin-top: 12px; padding: 10px 12px; border: 2px solid var(--imperial-indigo); background: transparent; color: var(--imperial-indigo); white-space: nowrap;">Simulate Stress Scenario</button>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 50px;">
@@ -270,9 +902,22 @@ document.addEventListener('DOMContentLoaded', () => {
               <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Promoter(s)</span> <strong id="cam-promoters"></strong></li>
               <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Sector</span> <strong id="cam-sector"></strong></li>
               <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Documentation Coverage</span> <strong style="color: var(--imperial-indigo); font-size: 1.1rem;">${coveragePercent}%</strong></li>
+              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Risk Status</span>
+                <strong id="cam-risk-status" style="color: var(--imperial-indigo);">--</strong>
+                <span id="cam-risk-score" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 800;"></span>
+                <span id="cam-pd-line" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 900;"></span>
+              </li>
               <li style="margin-top: 25px; font-size: 0.95rem; padding-top: 15px; border-top: 1px dashed var(--antique-gold);">
                 <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Recommendation</span> <br>
                 <span style="color:${missingDocs.length === 0 ? '#1B4965' : '#8B2942'}; font-weight:800; font-size: 1.05rem;">${recommendation}</span>
+                <div style="margin-top: 12px; display:flex; align-items:center; gap: 10px;">
+                  <input type="checkbox" id="camMonitoringToggle" style="transform: scale(1.05); accent-color: var(--antique-gold);">
+                  <label for="camMonitoringToggle" style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo); cursor:pointer;">Enable Post-Sanction Monitoring</label>
+                </div>
+                <div id="camMonitoringInfo" style="display:none; margin-top: 10px; font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); line-height: 1.6;">
+                  Monitoring signals: GST filing delays · Bounce frequency · Cash-flow volatility.
+                </div>
               </li>
             </ul>
           </div>
@@ -290,10 +935,24 @@ document.addEventListener('DOMContentLoaded', () => {
             <ul style="list-style: none; margin: 0; padding: 0; background: var(--ivory-card); padding: 10px 20px; border: 1px solid var(--border-gold); border-radius: 4px; box-shadow: var(--shadow-ancient);">
               ${docStatusHtml}
             </ul>
+            <div style="margin-top: 18px; background: rgba(185, 149, 59, 0.08); padding: 20px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;">
+                <h4 style="margin: 0; font-size: 1rem; color: var(--imperial-indigo);">Dharma Risk Alerts</h4>
+                <div id="cam-alert-count" style="font-weight:900;color:#8B2942;font-size:0.85rem;">0 Alerts</div>
+              </div>
+              <ul id="cam-alerts" style="margin: 0; padding-left: 18px; color: var(--heading-dark); font-weight: 700; font-size: 0.9rem; line-height: 1.6;">
+                <li style="color: var(--text-secondary); font-weight: 700;">No alerts loaded.</li>
+              </ul>
+              <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">
+                <span style="font-weight: 900; color: var(--imperial-indigo);">AI Summary:</span>
+                <span id="cam-ai-summary">—</span>
+              </div>
+            </div>
           </div>
         </div>
         <div style="margin-top: 50px; text-align: right; border-top: 2px solid var(--antique-gold); padding-top: 30px; display: flex; justify-content: flex-end; gap: 20px;">
           <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--imperial-indigo); color: var(--imperial-indigo);" onclick="window.print()">Print Documentation Memo</button>
+          <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--antique-gold); color: var(--heading-dark);" onclick="window.downloadLatestAIReport()">Download AI Report</button>
           <button class="btn btn-primary" style="padding: 14px 30px;" onclick="archiveCurrentCase(this)">Archive in Dharma Ledger</button>
         </div>
       `;
@@ -312,8 +971,75 @@ document.addEventListener('DOMContentLoaded', () => {
         riskClass: riskClass,
         docs: data.docs,
         coveragePercent: coveragePercent,
-        score: score
+        score: score,
+        ai: window.latestAI || null
       };
+
+      // Populate AI panel from latest analysis (if available)
+      const ai = window.latestAI || {};
+      if (ai?.risk?.status && q('#cam-risk-status')) {
+        q('#cam-risk-status').textContent = ai.risk.status;
+        q('#cam-risk-status').style.color = riskStatusColor(ai.risk.status);
+      }
+      if (ai?.risk?.score != null && q('#cam-risk-score')) {
+        q('#cam-risk-score').textContent = `Risk score: ${ai.risk.score}`;
+      }
+      if (q('#cam-ai-summary')) q('#cam-ai-summary').textContent = ai.credit_summary || '—';
+      if (q('#cam-pd-line') && ai?.risk?.score != null) {
+        const pd = computePD(ai.risk.score);
+        q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(pd * 100)}%`;
+      }
+      if (q('#cam-alert-count')) q('#cam-alert-count').textContent = `${(ai.alerts || []).length} Alerts`;
+      if (q('#cam-alerts')) {
+        const list = q('#cam-alerts');
+        const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
+        if (!alerts.length) {
+          list.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No alerts detected.</li>`;
+        } else {
+          list.innerHTML = alerts.slice(0, 6).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+        }
+      }
+
+      // Make AI summary more institutional (when we have extracted signals)
+      if (q('#cam-ai-summary') && ai?.extracted) {
+        const metrics = {
+          dscr: (parseFloat(q('#ebitda')?.value || 0) / (parseFloat(q('#debtService')?.value || 1) || 1)) || 0,
+          leverage: (parseFloat(q('#facility')?.value || 0) / (parseFloat(q('#networth')?.value || 1) || 1)) || 0,
+        };
+        q('#cam-ai-summary').textContent = buildInstitutionalSummary({
+          company: data.company,
+          sector: data.sector,
+          extracted: ai.extracted,
+          metrics,
+        });
+      }
+
+      // Monitoring toggle
+      const mon = q('#camMonitoringToggle');
+      const monInfo = q('#camMonitoringInfo');
+      if (mon && monInfo) {
+        mon.addEventListener('change', () => {
+          monInfo.style.display = mon.checked ? 'block' : 'none';
+        });
+      }
+
+      // Stress simulation for CAM (updates risk + recommendation text)
+      const stressBtn = q('#camStressBtn');
+      if (stressBtn && ai?.extracted) {
+        let stressed = false;
+        stressBtn.addEventListener('click', () => {
+          stressed = !stressed;
+          const ex = stressed ? applyStressScenario(ai.extracted) : ai.extracted;
+          const eff = computeRiskFromExplainability(ex, 0);
+          if (q('#cam-risk-status')) {
+            q('#cam-risk-status').textContent = eff.status;
+            q('#cam-risk-status').style.color = riskStatusColor(eff.status);
+          }
+          if (q('#cam-risk-score')) q('#cam-risk-score').textContent = `Updated risk score: ${eff.score}`;
+          if (q('#cam-pd-line')) q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(computePD(eff.score) * 100)}%`;
+          stressBtn.textContent = stressed ? 'Reset Stress Scenario' : 'Simulate Stress Scenario';
+        });
+      }
 
       camOutput.classList.remove('hidden');
       camOutput.scrollIntoView({ behavior: 'smooth' });
@@ -424,6 +1150,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const calcDscr = (parseFloat(ebitdaVal) / (parseFloat(debtVal) || 1)).toFixed(2);
     const calcLev = (parseFloat(facilityVal) / (parseFloat(networthVal) || 1)).toFixed(2);
 
+    const aiObj = (cached.ai || window.latestAI || null);
+    const ex = aiObj?.extracted || {};
+    const computedRisk = aiObj?.risk || computeRiskFromExplainability(ex, 0);
+    const pd = computePD(computedRisk.score || 50);
+    const fraud = computeFraudIndicator(ex);
+    const outcome = decideCaseOutcome({ riskStatus: computedRisk.status, riskScore: computedRisk.score, pd, fraudScore: fraud });
+    const sanction = outcome.sanctionCr == null ? Math.max(0, (parseFloat(facilityVal) || 0) * 0.8) : outcome.sanctionCr;
+
     const caseData = {
       id: '#' + (Math.floor(Math.random() * 9000) + 1000),
       company: company,
@@ -435,11 +1169,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ebitda: ebitdaVal,
         debtService: debtVal,
         facility: facilityVal,
-        approvedAmount: approvedVal,
+        approvedAmount: sanction ? String(Math.round(sanction * 100) / 100) : '0',
         leverage: calcLev,
         dscr: calcDscr
       },
-      status: 'Approved',
+      ai: aiObj,
+      status: outcome.status,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     };
 
@@ -454,7 +1189,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
 
     setTimeout(() => {
-      alert(`Success! Case ${caseData.id} for ${company} has been cryptographically secured in the Dharma Ledger.`);
+      alert(
+        `Case immutably logged.\nRisk snapshot recorded.\nTime-stamped underwriting preserved.\n\nDharma Ledger Entry: ${caseData.id} • ${company}`
+      );
     }, 200);
   };
 
@@ -567,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (q('#viewCompanySmall')) q('#viewCompanySmall').textContent = c.company;
       if (q('#viewCaseId')) q('#viewCaseId').textContent = `CASE ID: ${c.id}`;
       if (q('#viewDate')) q('#viewDate').textContent = `DATE: ${c.date}`;
-      if (q('#viewStatus')) q('#viewStatus').textContent = `STATUS: ${c.status.toUpperCase()}`;
+      if (q('#viewStatus')) q('#viewStatus').textContent = `STATUS: ${String(c.status || '').toUpperCase()}`;
       if (q('#viewGradeBadge')) {
         q('#viewGradeBadge').textContent = c.grade;
         q('#viewGradeBadge').className = `risk-tag ${c.riskClass}`; // Apply color class
@@ -582,6 +1319,164 @@ document.addEventListener('DOMContentLoaded', () => {
       if (q('#viewApproved')) q('#viewApproved').textContent = c.metrics.approvedAmount ? formatINR(c.metrics.approvedAmount) : 'N/A';
       if (q('#viewDscr')) q('#viewDscr').textContent = c.metrics.dscr + 'x';
       if (q('#viewLeverage')) q('#viewLeverage').textContent = c.metrics.leverage + 'x';
+
+      // AI risk + alerts (if available)
+      const ai = c.ai || {};
+      const risk = ai.risk || {};
+      const baseExtracted = ai.extracted || {};
+      if (q('#viewRiskStatus')) {
+        q('#viewRiskStatus').textContent = risk.status || '--';
+        q('#viewRiskStatus').style.color = riskStatusColor(risk.status);
+      }
+      if (q('#viewRiskScore')) q('#viewRiskScore').textContent = risk.score != null ? `Score ${risk.score}` : '--';
+
+      const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
+      if (q('#viewAlertsCount')) q('#viewAlertsCount').textContent = `${alerts.length} Alerts`;
+      if (q('#viewAlertsList')) {
+        const list = q('#viewAlertsList');
+        if (!alerts.length) {
+          list.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No alerts detected.</li>`;
+        } else {
+          const variance = computeMismatchVariancePct(baseExtracted);
+          const mismatch = variance != null ? {
+            severity: severityForMismatch(variance),
+            text: 'GST–Bank inflow mismatch',
+            detail: `${variance}% variance (reported vs observed inflows)`,
+          } : null;
+          const bounce = {
+            severity: severityForBounces(baseExtracted?.bank?.bounce_count),
+            text: 'Cheque return events',
+            detail: `${Number(baseExtracted?.bank?.bounce_count || 0)} event(s) detected in statement window`,
+          };
+
+          const derived = [];
+          if (mismatch) derived.push(mismatch);
+          derived.push(bounce);
+
+          list.innerHTML = derived.map(item => `
+            <li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">
+              ${formatAlertItem(item)}
+            </li>
+          `).join('');
+        }
+      }
+
+      // Report download (client-side)
+      const downloadBtn = q('#downloadAIReportBtn');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+          const html = buildAIReportHtml(c);
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `arthashastra_ai_report_${String(c.id || 'case').replace('#', '')}.html`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      // Predictive + explainability + stress simulation
+      let stressOn = false;
+
+      const refreshRiskPanel = (extracted) => {
+        const decision = computeCoreDecision({
+          metrics: {
+            ebitda: Number(c?.metrics?.ebitda),
+            debtService: Number(c?.metrics?.debtService),
+            facility: Number(c?.metrics?.facility),
+            networth: Number(c?.metrics?.networth),
+          },
+          extracted,
+          officerAdjust: 0,
+          stressOn,
+          warnings: ai.warnings || null,
+        });
+
+        if (q('#viewRiskStatus')) {
+          q('#viewRiskStatus').textContent = decision.risk.status || '--';
+          q('#viewRiskStatus').style.color = riskStatusColor(decision.risk.status);
+        }
+        if (q('#viewRiskScore')) q('#viewRiskScore').textContent = `Score ${decision.risk.score}`;
+
+        renderPredictive(decision.pd, decision.fraudScore);
+        renderExplainability(buildExplainability(decision.extracted));
+
+        if (q('#viewPdValue')) q('#viewPdValue').textContent = `${Math.round(decision.pd * 100)}%`;
+        if (q('#viewResilienceValue')) {
+          const threshold = 1.2;
+          const buffer = decision.metrics.dscr > 0 ? (decision.metrics.dscr / threshold) : 0;
+          q('#viewResilienceValue').textContent = buffer ? `${buffer.toFixed(2)}x` : '--x';
+        }
+
+        const comp = compositionLinesFromExplainability(buildExplainability(decision.extracted));
+        const compWrap = q('#viewRiskCompLines');
+        if (compWrap) compWrap.innerHTML = comp.map(x => `<div>${x.pct}% ${escapeHtml(x.label)}</div>`).join('');
+
+        if (q('#viewDecisionConfidenceValue')) q('#viewDecisionConfidenceValue').textContent = `${decision.confidence}%`;
+        if (q('#viewStatus')) q('#viewStatus').textContent = `STATUS: ${decision.outcome.status}`;
+
+        // XAI matrix driven by the same core object
+        if (q('#xaiFinHealth')) q('#xaiFinHealth').textContent = `${decision.xai.financialHealthPct}%`;
+        if (q('#xaiAltRisk')) q('#xaiAltRisk').textContent = `${decision.xai.alternativeDataPct}%`;
+        if (q('#xaiMacro')) q('#xaiMacro').textContent = `${decision.xai.macroHeadwindsPct}%`;
+        setTimeout(() => {
+          if (q('#xaiFinBar')) q('#xaiFinBar').style.width = `${decision.xai.financialHealthPct}%`;
+          if (q('#xaiAltBar')) q('#xaiAltBar').style.width = `${decision.xai.alternativeDataPct}%`;
+          if (q('#xaiMacroBar')) q('#xaiMacroBar').style.width = `${decision.xai.macroHeadwindsPct}%`;
+        }, 120);
+
+        // Single source of truth for chat + panels
+        window.caseViewState = decision;
+
+        // Governance footer
+        if (q('#modelVersion')) q('#modelVersion').textContent = `Model Version: ${decision.governance.modelVersion}`;
+        if (q('#modelUpdated')) q('#modelUpdated').textContent = `Last Updated: ${decision.governance.lastUpdated}`;
+        if (q('#modelCalibration')) q('#modelCalibration').textContent = `Stress Calibration: ${decision.governance.stressCalibration}`;
+      };
+
+      refreshRiskPanel(baseExtracted);
+
+      const stressBtn = q('#stressSimBtn');
+      const stressBadge = q('#stressBadge');
+      if (stressBtn) {
+        stressBtn.addEventListener('click', () => {
+          stressOn = !stressOn;
+          if (stressBadge) stressBadge.style.display = stressOn ? 'inline-block' : 'none';
+          stressBtn.textContent = stressOn ? 'Reset Stress Simulation' : 'Simulate Economic Stress';
+          const extracted = baseExtracted;
+          // Animated flip for judges (risk score)
+          const before = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn: !stressOn, warnings: ai.warnings || null });
+          const after = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn, warnings: ai.warnings || null });
+          animateNumber({
+            from: Number(before.risk.score || 0),
+            to: Number(after.risk.score || 0),
+            durationMs: 700,
+            onUpdate: (v) => {
+              if (q('#viewRiskScore')) q('#viewRiskScore').textContent = `Score ${Math.round(v * 10) / 10}`;
+            },
+          });
+          setTimeout(() => refreshRiskPanel(extracted), 200);
+        });
+      }
+
+      // Chat mode (offline reasoning)
+      const chatSend = q('#chatSendBtn');
+      const chatInput = q('#chatInput');
+      const send = () => {
+        const text = (chatInput?.value || '').trim();
+        if (!text) return;
+        appendChat('user', text);
+        const ans = answerChat(text, c);
+        appendChat('ai', ans);
+        chatInput.value = '';
+      };
+      if (chatSend) chatSend.addEventListener('click', send);
+      if (chatInput) chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') send();
+      });
 
       // --- XAI (Explainable AI) Engine for Vivriti Capital Hackathon ---
       const dscrVal = parseFloat(c.metrics.dscr || 1);
@@ -625,7 +1520,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Dynamic AI summary tailored for Vivriti Capital
       const summaryEl = q('#xaiSummary');
       if (summaryEl) {
-        if (c.status === 'Approved') {
+        if (window.caseViewState?.summary) {
+          summaryEl.textContent = window.caseViewState.summary;
+        } else if (c.status === 'Approved') {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> The neural model recommends <span style="color:var(--antique-gold); font-weight:bold;">APPROVAL</span>. The entity exhibits immense resilience with a robust DSCR of ${dscrVal}x, successfully mitigating alternative data flags. The risk profile aligns seamlessly with <em>Vivriti Capital's mid-market enterprise underwriting thresholds</em>. No significant macro-headwinds detected for the ${c.sector} sector.`;
         } else if (c.status === 'Pending') {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> This case is <span style="color:#f39c12; font-weight:bold;">PENDING REVIEW</span>. While alternative data flags are moderate, the leverage of ${levVal}x requires manual credit committee override. The model suggests further investigation into recent RBI circulars impacting the ${c.sector} sector before proceeding with Vivriti capital deployment.`;

@@ -1,2 +1,9 @@
-.vercel
-.env*.local
+.DS_Store
+.server.log
+.server.pid
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.env*

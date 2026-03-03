@@ -143,6 +143,187 @@
                                 style="font-size: 1.2rem; font-weight: 800; color: var(--imperial-indigo);">--</div>
                         </div>
                     </div>
+
+                    <div
+                        style="margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border-gold); display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div
+                            style="background: rgba(26, 37, 64, 0.05); border: 1px solid var(--border-gold); padding: 14px; border-radius: 4px;">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+                                Risk Status</div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div id="viewRiskStatus"
+                                    style="font-weight: 900; color: var(--imperial-indigo); font-size: 1.05rem;">--</div>
+                                <div id="viewRiskScore"
+                                    style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary);">--</div>
+                            </div>
+                            <div id="viewPdLine"
+                                style="margin-top: 8px; font-size: 0.85rem; font-weight: 800; color: var(--text-secondary);">
+                                Probability of Default (6M): <span id="viewPdValue"
+                                    style="font-weight: 900; color: var(--imperial-indigo);">--%</span>
+                            </div>
+                            <div id="viewResilienceLine"
+                                style="margin-top: 6px; font-size: 0.85rem; font-weight: 800; color: var(--text-secondary);">
+                                Resilience Buffer: <span id="viewResilienceValue"
+                                    style="font-weight: 900; color: var(--imperial-indigo);">--x</span>
+                                above distress threshold
+                            </div>
+                            <div id="viewRiskComposition"
+                                style="margin-top: 10px; border-top: 1px dashed var(--border-gold); padding-top: 10px; display:grid; gap: 6px; font-size: 0.82rem; color: var(--heading-dark); font-weight: 800;">
+                                <div style="color: var(--text-secondary); font-weight: 900; letter-spacing: 1px; text-transform: uppercase; font-size: 0.72rem;">
+                                    Risk Composition</div>
+                                <div id="viewRiskCompLines" style="display:grid; gap: 5px;">
+                                    <div style="color: var(--text-secondary); font-weight: 700;">Loading…</div>
+                                </div>
+                            </div>
+                            <div id="viewDecisionConfidence"
+                                style="margin-top: 10px; font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo);">
+                                Decision Confidence: <span id="viewDecisionConfidenceValue">--%</span>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                                <button id="stressSimBtn" class="btn"
+                                    style="padding: 10px 12px; border: 2px solid var(--imperial-indigo); background: transparent; color: var(--imperial-indigo); white-space: nowrap; flex: 1; display:flex; justify-content:center;">Simulate
+                                    Economic Stress</button>
+                                <div id="stressBadge"
+                                    style="display:none; font-size: 0.7rem; font-weight: 900; background: rgba(139, 41, 66, 0.12); color: #8B2942; padding: 6px 10px; border-radius: 999px; letter-spacing: 1px;">
+                                    STRESS ON</div>
+                            </div>
+                        </div>
+                        <div
+                            style="background: rgba(185, 149, 59, 0.08); border: 1px solid var(--border-gold); padding: 14px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            <div>
+                                <div
+                                    style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+                                    AI Report</div>
+                                <div style="font-weight: 800; color: var(--imperial-indigo); font-size: 0.95rem;">One-click
+                                    download</div>
+                            </div>
+                            <button id="downloadAIReportBtn" class="btn"
+                                style="padding: 10px 14px; border: 2px solid var(--antique-gold) !important; background: transparent !important; color: var(--heading-dark) !important; white-space: nowrap; min-width: 120px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;">Download</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card"
+                style="padding: 34px; background: var(--ivory-card); border: 1px solid var(--border-gold); margin-bottom: 40px; animation: fadeInUp 0.6s ease-out;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--antique-gold); padding-bottom: 14px; margin-bottom: 20px;">
+                    <h3 style="color: var(--imperial-indigo); font-size: 1.25rem; margin: 0;">Predictive Signals</h3>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div
+                            style="font-size: 0.75rem; font-weight: 900; background: rgba(26, 37, 64, 0.08); color: var(--imperial-indigo); padding: 6px 12px; border-radius: 999px; letter-spacing: 1px;">
+                            6-Month Horizon</div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+                    <div
+                        style="border: 1px solid var(--border-gold); border-radius: 4px; padding: 18px; background: rgba(255,255,255,0.65);">
+                        <div style="display:flex; justify-content:space-between; align-items:end; gap:12px;">
+                            <div>
+                                <div style="font-size:0.75rem; font-weight:900; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">
+                                    Probability of Default</div>
+                                <div id="pdValue"
+                                    style="font-size: 1.7rem; font-weight: 900; color: var(--imperial-indigo); margin-top: 6px;">--%
+                                </div>
+                            </div>
+                            <div id="pdLabel" style="font-weight:900; color: var(--text-secondary);">--</div>
+                        </div>
+                        <div
+                            style="height: 10px; background: var(--sandstone-ash); border: 1px solid var(--border-gold); overflow: hidden; margin-top: 14px;">
+                            <div id="pdBar" style="height:100%; width:0%; background: #8B2942; transition: width 0.6s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="border: 1px solid var(--border-gold); border-radius: 4px; padding: 18px; background: rgba(255,255,255,0.65);">
+                        <div style="display:flex; justify-content:space-between; align-items:end; gap:12px;">
+                            <div>
+                                <div style="font-size:0.75rem; font-weight:900; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">
+                                    Fraud Risk Indicator</div>
+                                <div id="fraudValue"
+                                    style="font-size: 1.7rem; font-weight: 900; color: var(--imperial-indigo); margin-top: 6px;">--
+                                </div>
+                            </div>
+                            <div id="fraudLabel" style="font-weight:900; color: var(--text-secondary);">--</div>
+                        </div>
+                        <div
+                            style="height: 10px; background: var(--sandstone-ash); border: 1px solid var(--border-gold); overflow: hidden; margin-top: 14px;">
+                            <div id="fraudBar"
+                                style="height:100%; width:0%; background: #9E7C2F; transition: width 0.6s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modelGovernance"
+                    style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border-gold); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+                    <div style="font-size: 0.8rem; font-weight: 900; color: var(--imperial-indigo);">Model Governance</div>
+                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary);">
+                        <span id="modelVersion">Model Version: --</span> ·
+                        <span id="modelUpdated">Last Updated: --</span> ·
+                        <span id="modelCalibration">Stress Calibration: --</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card"
+                style="padding: 34px; background: var(--ivory-card); border: 1px solid var(--border-gold); margin-bottom: 40px; animation: fadeInUp 0.6s ease-out;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--antique-gold); padding-bottom: 14px; margin-bottom: 20px;">
+                    <h3 style="color: var(--imperial-indigo); font-size: 1.25rem; margin: 0;">Dharma Risk Alerts</h3>
+                    <div id="viewAlertsCount"
+                        style="font-size: 0.75rem; font-weight: 800; background: rgba(139, 41, 66, 0.1); color: #8B2942; padding: 5px 12px; border-radius: 999px; letter-spacing: 1px;">
+                        0 Alerts</div>
+                </div>
+                <ul id="viewAlertsList" style="list-style: none; padding: 0; margin: 0; display: grid; gap: 10px;">
+                    <li style="color: var(--text-secondary); font-weight: 700;">No alerts loaded.</li>
+                </ul>
+            </div>
+
+            <div class="card"
+                style="padding: 34px; background: var(--ivory-card); border: 1px solid var(--border-gold); margin-bottom: 40px; animation: fadeInUp 0.65s ease-out;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--antique-gold); padding-bottom: 14px; margin-bottom: 20px;">
+                    <h3 style="color: var(--imperial-indigo); font-size: 1.25rem; margin: 0;">Why This Risk?</h3>
+                    <div
+                        style="font-size: 0.75rem; font-weight: 900; background: rgba(185, 149, 59, 0.12); color: var(--imperial-indigo); padding: 6px 12px; border-radius: 999px; letter-spacing: 1px;">
+                        Explainability</div>
+                </div>
+
+                <div id="xaiBreakdown" style="display:grid; gap: 12px;"></div>
+
+                <details style="margin-top: 16px;">
+                    <summary
+                        style="cursor:pointer; font-weight: 900; color: var(--imperial-indigo); letter-spacing: 1px; text-transform: uppercase; font-size: 0.78rem;">
+                        Risk Formula (Auditable)
+                    </summary>
+                    <div
+                        style="margin-top: 10px; padding: 14px; border: 1px solid var(--border-gold); background: rgba(255,255,255,0.65); border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 0.85rem; color: var(--heading-dark); line-height: 1.6;">
+                        Risk Score (0–100) = 0.30×CashFlowRisk + 0.30×ComplianceRisk + 0.20×BehavioralRisk + 0.10×ProfitabilityRisk + 0.10×StressSensitivity<br>
+                        PD (6M) = BasePD(RiskScore) × (1 + StressMultiplier)
+                    </div>
+                </details>
+            </div>
+
+            <div class="card"
+                style="padding: 34px; background: var(--ivory-card); border: 1px solid var(--border-gold); margin-bottom: 40px; animation: fadeInUp 0.7s ease-out;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--antique-gold); padding-bottom: 14px; margin-bottom: 20px;">
+                    <h3 style="color: var(--imperial-indigo); font-size: 1.25rem; margin: 0;">AI Conversation Mode</h3>
+                    <div
+                        style="font-size: 0.75rem; font-weight: 900; background: rgba(26, 37, 64, 0.08); color: var(--imperial-indigo); padding: 6px 12px; border-radius: 999px; letter-spacing: 1px;">
+                        Offline Reasoning</div>
+                </div>
+
+                <div id="chatLog"
+                    style="height: 180px; overflow: auto; padding: 14px; border: 1px solid var(--border-gold); background: rgba(255,255,255,0.65); border-radius: 4px; display:grid; gap: 10px;">
+                    <div style="color: var(--text-secondary); font-weight: 700;">Ask: “Why is this borrower moderate risk?” or “Can we increase loan amount?”</div>
+                </div>
+                <div style="display:flex; gap: 12px; margin-top: 12px;">
+                    <input id="chatInput" class="input-box" placeholder="Ask Arthashastra AI..."
+                        style="flex:1; background: white;">
+                    <button id="chatSendBtn" class="btn btn-primary" style="padding: 12px 18px;">Send</button>
                 </div>
             </div>
 
@@ -277,7 +458,7 @@
             <p>Architected with Civilizational Wisdom</p>
         </div>
     </footer>
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=12"></script>
 </body>
 
 </html>

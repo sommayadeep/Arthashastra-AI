@@ -142,6 +142,57 @@
 
             <div class="endpoint-card">
                 <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span class="method-tag">POST</span>
+                    <span class="endpoint-path">/api/case/analyze</span>
+                </div>
+                <p>Upload GST / ITR / Bank Statement files to auto-extract structured data, compute ratios, detect
+                    anomalies, and return a risk status + AI credit summary (used by the existing dashboard UI).</p>
+
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>gst_docs</code></td>
+                            <td>File</td>
+                            <td>GST data (.csv or .json).</td>
+                        </tr>
+                        <tr>
+                            <td><code>itr_docs</code></td>
+                            <td>File</td>
+                            <td>ITR data (.csv or .json).</td>
+                        </tr>
+                        <tr>
+                            <td><code>bank_docs</code></td>
+                            <td>File</td>
+                            <td>Bank statement (.csv).</td>
+                        </tr>
+                        <tr>
+                            <td><code>adjust</code></td>
+                            <td>Number</td>
+                            <td>Officer risk adjustment (−10 to +10).</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="code-snippet">
+                    {<br>
+                    &nbsp;&nbsp;"intelligence": {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"risk": { "status": "Moderate", "score": 52.4 },<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"alerts": ["High GST–Bank inflow mismatch detected."],<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"credit_summary": "..."<br>
+                    &nbsp;&nbsp;}<br>
+                    }
+                </div>
+            </div>
+
+            <div class="endpoint-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
                     <span class="method-tag" style="background: #27ae60;">GET</span>
                     <span class="endpoint-path">/api/v1/dharma-ledger/{case_id}</span>
                 </div>

@@ -1,0 +1,8 @@
+credit,debit,balance,description
+2500000,0,3500000,NEFT credit - customer receipt
+0,1250000,2250000,Vendor payment - RTGS
+1800000,0,4050000,UPI collections
+0,2100000,1950000,EMI + interest debit
+0,0,1950000,Cheque bounce - insufficient funds
+3200000,0,5150000,Invoice settlement - NEFT
+0,2750000,2400000,Salary & statutory payments
