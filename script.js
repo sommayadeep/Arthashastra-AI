@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stored) return stored;
     // Production default (Render)
     if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
-      return 'https://ashstrashastra-backend.onrender.com';
+      // Update this if your Render service URL changes.
+      return 'https://arthashastra-ai-backend.onrender.com';
     }
     return '';
   }
