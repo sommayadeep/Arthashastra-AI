@@ -167,23 +167,6 @@ class BankingNewsOrchestrator:
                 meta = self._classify(it)
                 filtered.append({**it, **meta})
 
-        # If nothing in last 24h, expand to 7d so UI isn't empty.
-        if not filtered:
-            cutoff7 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
-            for it in items:
-                ts = it.get("published_at")
-                if not ts:
-                    continue
-                try:
-                    dt = datetime.datetime.fromisoformat(ts)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=datetime.timezone.utc)
-                except Exception:
-                    continue
-                if dt >= cutoff7:
-                    meta = self._classify(it)
-                    filtered.append({**it, **meta})
-
         filtered.sort(key=lambda x: x.get("published_at") or "", reverse=True)
         return {
             "status": "success",
@@ -192,6 +175,7 @@ class BankingNewsOrchestrator:
             "count": len(filtered),
             "items": filtered[:30],
             "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "note": None if filtered else f"No items found in the last {hours} hours. Try widening the window.",
         }
 
 if __name__ == "__main__":

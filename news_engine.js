@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ★ Cache version — increment to bust old stale caches
-    const CACHE_VERSION = 'v3';
+    const CACHE_VERSION = 'v4';
     const cacheVersionKey = 'banking_news_version';
     if (localStorage.getItem(cacheVersionKey) !== CACHE_VERSION) {
         localStorage.removeItem('banking_news_cache');
@@ -43,22 +43,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- HELPER: Relative time label ---
     function getRelativeLabel(dateObj) {
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const articleDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-        const diffMs = today - articleDay;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffMs = now - dateObj;
+        const diffMin = Math.floor(diffMs / (1000 * 60));
+        const diffHr = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDay = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        if (diffDays <= 0) return 'TODAY';
-        if (diffDays === 1) return 'YESTERDAY';
-        if (diffDays <= 7) return `${diffDays} DAYS AGO`;
+        if (diffMs < 0) return 'SCHEDULED';
+        if (diffMin <= 2) return 'JUST NOW';
+        if (diffMin < 60) return `${diffMin} MIN AGO`;
+        if (diffHr < 24) return `${diffHr} HOURS AGO`;
+        if (diffDay === 1) return 'YESTERDAY';
+        if (diffDay <= 7) return `${diffDay} DAYS AGO`;
         return dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    function isToday(dateObj) {
-        const now = new Date();
-        return dateObj.getDate() === now.getDate() &&
-            dateObj.getMonth() === now.getMonth() &&
-            dateObj.getFullYear() === now.getFullYear();
+    function isLiveWindow(dateObj, hours = 24) {
+        const now = Date.now();
+        return (now - dateObj.getTime()) <= hours * 60 * 60 * 1000;
     }
 
     // --- 1. AI RISK IMPACT ENGINE ---
@@ -102,15 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const cacheKey = 'banking_news_cache';
         const cacheTime = localStorage.getItem(cacheKey + '_time');
 
-        // Use cache if not expired (5 minutes for fresh news)
-        if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 5 * 60 * 1000)) {
+        // Use cache if not expired (60 seconds; keep it truly live)
+        if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 60 * 1000)) {
             const cached = JSON.parse(localStorage.getItem(cacheKey));
             if (cached && cached.length > 0) {
                 // Restore Date objects from cached ISO strings
                 cached.forEach(item => {
                     item.rawDate = new Date(item.rawDateISO);
                     item.relativeLabel = getRelativeLabel(item.rawDate);
-                    item.isLive = isToday(item.rawDate);
+                    item.isLive = isLiveWindow(item.rawDate, 24);
                 });
                 return cached;
             }
@@ -143,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         rawDate: pubDate,
                         rawDateISO: pubDate.toISOString(),
                         relativeLabel: getRelativeLabel(pubDate),
-                        isLive: isToday(pubDate),
+                        isLive: isLiveWindow(pubDate, 24),
                         link: item.link,
                         riskLevel: analysis.level,
                         impactType: analysis.impact
