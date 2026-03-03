@@ -69,7 +69,12 @@ try:
     @app.get("/api/news")
     def get_news():
         query = request.args.get("q", "Indian Banking Sector")
-        return jsonify(agent.fetch_live_news(query))
+        hours = request.args.get("hours", "24")
+        try:
+            h = int(hours)
+        except ValueError:
+            h = 24
+        return jsonify(agent.fetch_live_news(query, hours=h))
 
     @app.post("/api/case/analyze")
     def analyze_case():

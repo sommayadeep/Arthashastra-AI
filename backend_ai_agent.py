@@ -1,5 +1,12 @@
 import json
 import datetime
+import re
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
+from typing import Any, Dict, List, Optional
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 # ---------------------------------------------------------
 # INDIAN BANKING NEWS INTELLIGENCE ENGINE - BACKEND AGENT
@@ -65,27 +72,127 @@ class BankingNewsOrchestrator:
     def __init__(self):
         self.system_prompt = SYSTEM_PROMPT
 
-    def fetch_live_news(self, query="Indian Banking Sector"):
+    def _fetch_url(self, url: str, timeout_s: int = 15) -> bytes:
+        req = Request(
+            url,
+            headers={
+                "User-Agent": "ArthashastraAI/1.0 (+https://arthashastra.ai) Python",
+                "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            },
+        )
+        with urlopen(req, timeout=timeout_s) as resp:
+            return resp.read()
+
+    def _parse_google_news_rss(self, rss_bytes: bytes) -> List[Dict[str, Any]]:
+        root = ET.fromstring(rss_bytes)
+        channel = root.find("channel")
+        if channel is None:
+            return []
+        items: List[Dict[str, Any]] = []
+        for it in channel.findall("item"):
+            title = (it.findtext("title") or "").strip()
+            link = (it.findtext("link") or "").strip()
+            pub = (it.findtext("pubDate") or "").strip()
+            source_el = it.find("source")
+            source = (source_el.text or "").strip() if source_el is not None else ""
+            desc = (it.findtext("description") or "").strip()
+            dt = None
+            try:
+                dt = parsedate_to_datetime(pub)
+            except Exception:
+                dt = None
+            items.append(
+                {
+                    "title": title,
+                    "link": link,
+                    "source": source or "Google News",
+                    "pubDate": pub,
+                    "published_at": dt.isoformat() if dt else None,
+                    "summary": re.sub(r"<[^>]+>", "", desc)[:280],
+                }
+            )
+        return items
+
+    def _classify(self, item: Dict[str, Any]) -> Dict[str, str]:
+        text = f"{item.get('title','')} {item.get('summary','')}".lower()
+        high = ("fraud", "scam", "npa", "default", "penalty", "fine", "violation", "pmla", "money laundering", "cancel")
+        moderate = ("merger", "acquisition", "downgrade", "liquidity", "investigation", "capital", "adequacy", "curbs")
+        if any(k in text for k in high):
+            level = "High"
+        elif any(k in text for k in moderate):
+            level = "Moderate"
+        else:
+            level = "Low"
+
+        if "liquidity" in text:
+            impact = "Liquidity Impact"
+        elif any(k in text for k in ("kyc", "rbi", "compliance", "circular", "guideline", "directive")):
+            impact = "Compliance Impact"
+        elif any(k in text for k in ("npa", "loan", "credit", "default")):
+            impact = "Credit Risk"
+        elif any(k in text for k in ("capital", "basel", "tier")):
+            impact = "Capital Adequacy"
+        else:
+            impact = "Informational"
+
+        return {"risk_impact_level": level, "impact_type": impact}
+
+    def fetch_live_news(self, query: str = "Indian Banking Sector", hours: int = 24) -> Dict[str, Any]:
         """
-        In a production environment, this function would:
-        1. Call a Search API (Google/Bing) or News API.
-        2. Pass the raw text + SYSTEM_PROMPT to an LLM (GPT-4/Gemini).
-        3. Return the parsed JSON.
+        Live news via RSS (no API keys):
+        - Google News RSS for query, filtered client-side by recency.
         """
-        print(f"[*] Orchestrator: Fetching news for '{query}'...")
-        print("[*] Orchestrator: Applying System Prompt filters...")
-        
-        # Placeholder for actual API call
-        # response = openai.ChatCompletion.create(
-        #     model="gpt-4",
-        #     messages=[
-        #         {"role": "system", "content": self.system_prompt},
-        #         {"role": "user", "content": f"Fetch and process news for: {query}"}
-        #     ]
-        # )
-        
-        print("[*] Orchestrator: Data processed successfully.")
-        return {"status": "success", "message": "This is a backend stub. Connect to LLM API to generate real JSON."}
+        q = query or "Indian Banking Sector"
+        rss_url = (
+            "https://news.google.com/rss/search?q="
+            + quote(f"{q} banking india")
+            + "&hl=en-IN&gl=IN&ceid=IN:en"
+        )
+        raw = self._fetch_url(rss_url)
+        items = self._parse_google_news_rss(raw)
+
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=max(1, int(hours or 24)))
+        filtered: List[Dict[str, Any]] = []
+        for it in items:
+            ts = it.get("published_at")
+            if not ts:
+                continue
+            try:
+                dt = datetime.datetime.fromisoformat(ts)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=datetime.timezone.utc)
+            except Exception:
+                continue
+            if dt >= cutoff:
+                meta = self._classify(it)
+                filtered.append({**it, **meta})
+
+        # If nothing in last 24h, expand to 7d so UI isn't empty.
+        if not filtered:
+            cutoff7 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+            for it in items:
+                ts = it.get("published_at")
+                if not ts:
+                    continue
+                try:
+                    dt = datetime.datetime.fromisoformat(ts)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=datetime.timezone.utc)
+                except Exception:
+                    continue
+                if dt >= cutoff7:
+                    meta = self._classify(it)
+                    filtered.append({**it, **meta})
+
+        filtered.sort(key=lambda x: x.get("published_at") or "", reverse=True)
+        return {
+            "status": "success",
+            "query": q,
+            "hours": hours,
+            "count": len(filtered),
+            "items": filtered[:30],
+            "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
 
 if __name__ == "__main__":
     agent = BankingNewsOrchestrator()

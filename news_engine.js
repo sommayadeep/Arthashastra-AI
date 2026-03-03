@@ -87,13 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return { level: riskLevel, impact: impactType, kw: keywordsFound };
     }
 
-    // --- 2. DYNAMIC NEWS FETCH (RSS Proxy) ---
+    // --- 2. DYNAMIC NEWS FETCH (Backend RSS) ---
     async function fetchBankingNews(query = '') {
         const cacheKey = 'banking_news_cache';
         const cacheTime = localStorage.getItem(cacheKey + '_time');
 
-        // Use cache if not expired (30 minutes for fresh news)
-        if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 30 * 60 * 1000)) {
+        // Use cache if not expired (5 minutes for fresh news)
+        if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 5 * 60 * 1000)) {
             const cached = JSON.parse(localStorage.getItem(cacheKey));
             if (cached && cached.length > 0) {
                 // Restore Date objects from cached ISO strings
@@ -109,23 +109,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loader) loader.style.display = 'block';
         if (newsGrid) newsGrid.innerHTML = '';
 
-        const searchQuery = query ? `${query} banking india` : 'India banking finance RBI latest news 2026';
-        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-IN&gl=IN&ceid=IN:en&when=1d`;
-        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+        const searchQuery = query ? query : 'Indian Banking Sector';
+        const apiUrl = `/api/news?q=${encodeURIComponent(searchQuery)}&hours=24`;
 
         try {
-            const res = await fetch(apiUrl);
+            const res = await fetch(apiUrl, { cache: 'no-store' });
             const data = await res.json();
 
-            if (data.status === 'ok') {
+            if (data.status === 'success' && Array.isArray(data.items)) {
                 const items = data.items.map(item => {
-                    const analysis = analyzeRisk({ title: item.title, content: item.description });
-                    const pubDate = new Date(item.pubDate);
+                    const pubDate = item.published_at ? new Date(item.published_at) : new Date(item.pubDate || Date.now());
+                    const analysis = {
+                        level: (item.risk_impact_level || 'Low').toLowerCase() === 'moderate' ? 'moderate' : ((item.risk_impact_level || 'Low').toLowerCase() === 'high' ? 'high' : 'low'),
+                        impact: item.impact_type || 'Informational'
+                    };
                     return {
                         id: Math.random().toString(36).substr(2, 9),
-                        title: item.title.split(' - ')[0],
-                        source: item.title.split(' - ')[1] || 'Mainstream Media',
-                        description: item.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...',
+                        title: item.title || '—',
+                        source: item.source || 'Google News',
+                        description: (item.summary || '').substring(0, 150) + ((item.summary || '').length > 150 ? '...' : ''),
                         date: pubDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
                         rawDate: pubDate,
                         rawDateISO: pubDate.toISOString(),
