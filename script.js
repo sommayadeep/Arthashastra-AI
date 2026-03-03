@@ -751,84 +751,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const minDelay = new Promise((resolve) => setTimeout(resolve, totalTime + 400));
 
-      const formData = new FormData();
-      const gst = q('#gst_docs');
-      const itr = q('#itr_docs');
-      const bank = q('#bank_docs');
-      if (gst?.files?.[0]) formData.append('gst_docs', gst.files[0]);
-      if (itr?.files?.[0]) formData.append('itr_docs', itr.files[0]);
-      if (bank?.files?.[0]) formData.append('bank_docs', bank.files[0]);
-      if (q('#company')?.value) formData.append('company', q('#company').value);
-      if (q('#promoters')?.value) formData.append('promoters', q('#promoters').value);
-      if (q('#sector')?.value) formData.append('sector', q('#sector').value);
-      if (adjust?.value) formData.append('adjust', adjust.value);
+      let cleaned = false;
+      const cleanup = async () => {
+        if (cleaned) return;
+        cleaned = true;
+        try { await minDelay; } catch { }
 
-      let analysis = null;
+        if (aiLoading) aiLoading.classList.add('hidden');
+        aiBtn.disabled = false;
+        aiBtn.style.opacity = '1';
+
+        overlay.classList.add('fade-out');
+        overlay.classList.remove('active');
+        setTimeout(() => {
+          try { overlay.remove(); } catch { }
+        }, 900);
+
+        const sections = qa('.form-section');
+        sections.forEach(s => {
+          s.style.transition = 'all 0.5s';
+          s.style.borderColor = 'var(--antique-gold)';
+          setTimeout(() => s.style.borderColor = 'transparent', 1000);
+        });
+      };
+
       try {
-        analysis = await postCaseAnalyze(formData);
-      } catch (e) {
+        const formData = new FormData();
+        const gst = q('#gst_docs');
+        const itr = q('#itr_docs');
+        const bank = q('#bank_docs');
+        if (gst?.files?.[0]) formData.append('gst_docs', gst.files[0]);
+        if (itr?.files?.[0]) formData.append('itr_docs', itr.files[0]);
+        if (bank?.files?.[0]) formData.append('bank_docs', bank.files[0]);
+        if (q('#company')?.value) formData.append('company', q('#company').value);
+        if (q('#promoters')?.value) formData.append('promoters', q('#promoters').value);
+        if (q('#sector')?.value) formData.append('sector', q('#sector').value);
+        if (adjust?.value) formData.append('adjust', adjust.value);
+
+        let analysis = null;
+        try {
+          analysis = await postCaseAnalyze(formData);
+        } catch (e) {
+          const tried = e?._arthashastra_last_url ? `\nTried: ${e._arthashastra_last_url}` : '';
+          alert(`⚠️ AI extraction failed.\n\nError: ${e?.message || e}${tried}`);
+        }
+
         await minDelay;
-        const tried = e?._arthashastra_last_url ? `\nTried: ${e._arthashastra_last_url}` : '';
-        alert(`⚠️ AI extraction failed.\n\nBackend: http://127.0.0.1:5050\n\nError: ${e?.message || e}${tried}`);
+
+        if (analysis?.status === 'success') {
+          const intel = analysis.intelligence || {};
+          window.latestAI = intel;
+
+          const extracted = intel.extracted || {};
+          const profitCr = extracted?.itr?.profit_cr;
+          const turnoverCr = extracted?.gst?.turnover_cr;
+          const inflowCr = extracted?.bank?.inflow_cr;
+          const debtServiceCr = extracted?.bank?.debt_service_cr;
+
+          if (profitCr == null && turnoverCr == null && inflowCr == null) {
+            alert(
+              "AI Extraction ran, but no numeric fields were extracted.\n\n" +
+              "If you're uploading PDFs, convert/export them to CSV/XLSX to enable real auto-fill."
+            );
+          }
+
+          if (q('#ebitda') && (q('#ebitda').value === '' || q('#ebitda').value === '0') && profitCr != null) q('#ebitda').value = profitCr;
+          if (q('#debtService') && (q('#debtService').value === '' || q('#debtService').value === '0') && debtServiceCr != null) q('#debtService').value = debtServiceCr;
+          if (q('#facility') && (q('#facility').value === '' || q('#facility').value === '0') && turnoverCr != null) q('#facility').value = Math.round((turnoverCr * 0.08) * 100) / 100;
+          if (q('#networth') && (q('#networth').value === '' || q('#networth').value === '0') && inflowCr != null) q('#networth').value = Math.round((inflowCr * 0.25) * 100) / 100;
+
+          if (q('#collateral') && (q('#collateral').value === '' || q('#collateral').value === '0')) {
+            const facilityCr = parseAmountToCr(q('#facility')?.value);
+            if (facilityCr != null) q('#collateral').value = Math.round((facilityCr * 1.3) * 100) / 100;
+          }
+
+          if (adjust && adjust.value === '0') {
+            adjust.value = '1';
+            if (adjustLabel) adjustLabel.textContent = '1';
+          }
+        }
+      } catch (fatal) {
+        console.error('AI overlay fatal error:', fatal);
+      } finally {
+        await cleanup();
       }
-
-      await minDelay;
-
-      if (analysis?.status === 'success') {
-        const intel = analysis.intelligence || {};
-        window.latestAI = intel;
-
-        const extracted = intel.extracted || {};
-        const profitCr = extracted?.itr?.profit_cr;
-        const turnoverCr = extracted?.gst?.turnover_cr;
-        const inflowCr = extracted?.bank?.inflow_cr;
-        const debtServiceCr = extracted?.bank?.debt_service_cr;
-
-        // If user uploaded PDFs, extraction will be empty in offline mode.
-        if (profitCr == null && turnoverCr == null && inflowCr == null) {
-          alert(
-            "AI Extraction ran, but no numeric fields were extracted.\n\n" +
-            "Current backend supports structured GST/ITR (.csv/.json) and bank statement (.csv).\n" +
-            "For PDFs, export/convert to CSV (or provide extracted tables) to enable real auto-fill."
-          );
-        }
-
-        // Populate minimal financial inputs in Cr if empty (demo heuristic)
-        if (q('#ebitda') && (q('#ebitda').value === '' || q('#ebitda').value === '0') && profitCr != null) q('#ebitda').value = profitCr;
-        if (q('#debtService') && (q('#debtService').value === '' || q('#debtService').value === '0') && debtServiceCr != null) q('#debtService').value = debtServiceCr;
-        if (q('#facility') && (q('#facility').value === '' || q('#facility').value === '0') && turnoverCr != null) q('#facility').value = Math.round((turnoverCr * 0.08) * 100) / 100;
-        if (q('#networth') && (q('#networth').value === '' || q('#networth').value === '0') && inflowCr != null) q('#networth').value = Math.round((inflowCr * 0.25) * 100) / 100;
-
-        // Collateral usually isn't in GST/ITR/Bank; provide an explicit estimate if empty.
-        if (q('#collateral') && (q('#collateral').value === '' || q('#collateral').value === '0')) {
-          const facilityCr = parseAmountToCr(q('#facility')?.value);
-          if (facilityCr != null) q('#collateral').value = Math.round((facilityCr * 1.3) * 100) / 100; // ~77% LTV proxy
-        }
-
-        if (adjust && adjust.value === '0') {
-          adjust.value = '1';
-          if (adjustLabel) adjustLabel.textContent = '1';
-        }
-      }
-
-      if (aiLoading) aiLoading.classList.add('hidden');
-      aiBtn.disabled = false;
-      aiBtn.style.opacity = '1';
-
-      // Graceful overlay fade out
-      overlay.classList.add('fade-out');
-      overlay.classList.remove('active');
-      setTimeout(() => {
-        overlay.remove();
-      }, 900);
-
-      // Visual feedback on form sections
-      const sections = qa('.form-section');
-      sections.forEach(s => {
-        s.style.transition = 'all 0.5s';
-        s.style.borderColor = 'var(--antique-gold)';
-        setTimeout(() => s.style.borderColor = 'transparent', 1000);
-      });
     });
   }
 
