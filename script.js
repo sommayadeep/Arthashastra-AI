@@ -15,7 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getBackendBase() {
-    return localStorage.getItem('arthashastra_backend_base') || '';
+    const stored = localStorage.getItem('arthashastra_backend_base');
+    if (stored) return stored;
+    // Production default (Render)
+    if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
+      return 'https://ashstrashastra-backend.onrender.com';
+    }
+    return '';
   }
 
   async function postCaseAnalyze(formData) {
