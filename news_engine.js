@@ -20,19 +20,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const liquidityCount = document.querySelector('#liquidityCount');
 
     let GLOBAL_NEWS = [];
+    let LAST_NEWS_NOTE = null;
+    let LAST_NEWS_DEBUG = null;
+
+    // Feed configuration
+    // - LIVE: what gets the "LIVE BROADCAST" tag
+    // - FEED: how far back we pull to ensure we always have enough items
+    // - FETCH: how many items we fetch from backend
+    // - DISPLAY: how many latest items we show (fills with older items if needed)
+    const LIVE_WINDOW_HOURS = 24;
+    const FEED_WINDOW_HOURS = 24 * 7; // 7 days
+    const FEED_FETCH_LIMIT = 30;
+    const FEED_DISPLAY_LIMIT = 9;
+
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function normalizeBaseUrl(url) {
+        return (url || '').trim().replace(/\/+$/, '');
+    }
 
     function getBackendBase() {
         const stored = localStorage.getItem('arthashastra_backend_base');
-        if (stored) return stored.replace(/\/+$/, '');
-        // Production default (Render)
-        if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
-            return 'https://arthashastra-ai-backend.onrender.com';
-        }
-        return '';
+        if (stored) return normalizeBaseUrl(stored);
+        // Default (Render)
+        return 'https://ashstrashastra-backend.onrender.com';
+    }
+
+    function getBackendCandidates() {
+        const candidates = [];
+        const stored = normalizeBaseUrl(localStorage.getItem('arthashastra_backend_base'));
+        if (stored) candidates.push(stored);
+
+        // Known Render service URLs (try a few common project names)
+        candidates.push('https://ashstrashastra-backend.onrender.com');
+        candidates.push('https://ashstrashastra-ai-backend.onrender.com');
+        candidates.push('https://arthashastra-ai-backend.onrender.com');
+
+        // Same-origin (for setups with a proxy/rewrite)
+        candidates.push('');
+
+        // Local dev backend
+        candidates.push('http://localhost:5050');
+        candidates.push('http://127.0.0.1:5050');
+
+        return [...new Set(candidates.map(normalizeBaseUrl))];
     }
 
     // ★ Cache version — increment to bust old stale caches
-    const CACHE_VERSION = 'v4';
+    const CACHE_VERSION = 'v5';
     const cacheVersionKey = 'banking_news_version';
     if (localStorage.getItem(cacheVersionKey) !== CACHE_VERSION) {
         localStorage.removeItem('banking_news_cache');
@@ -102,6 +144,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchBankingNews(query = '') {
         const cacheKey = 'banking_news_cache';
         const cacheTime = localStorage.getItem(cacheKey + '_time');
+        const cachedAny = (() => {
+            try {
+                const raw = localStorage.getItem(cacheKey);
+                const parsed = raw ? JSON.parse(raw) : null;
+                return Array.isArray(parsed) ? parsed : null;
+            } catch {
+                return null;
+            }
+        })();
 
         // Use cache if not expired (60 seconds; keep it truly live)
         if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 60 * 1000)) {
@@ -111,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cached.forEach(item => {
                     item.rawDate = new Date(item.rawDateISO);
                     item.relativeLabel = getRelativeLabel(item.rawDate);
-                    item.isLive = isLiveWindow(item.rawDate, 24);
+                    item.isLive = isLiveWindow(item.rawDate, LIVE_WINDOW_HOURS);
                 });
                 return cached;
             }
@@ -121,48 +172,79 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newsGrid) newsGrid.innerHTML = '';
 
         const searchQuery = query ? query : 'Indian Banking Sector';
-        const base = getBackendBase();
-        const apiUrl = `${base}/api/news?q=${encodeURIComponent(searchQuery)}&hours=24`;
+        const qs = `q=${encodeURIComponent(searchQuery)}&hours=${FEED_WINDOW_HOURS}&limit=${FEED_FETCH_LIMIT}`;
+        const apiUrls = getBackendCandidates().map(base => (base ? `${base}/api/news?${qs}` : `/api/news?${qs}`));
 
         try {
-            const res = await fetch(apiUrl, { cache: 'no-store' });
-            const data = await res.json();
+            const attempts = [];
+            for (const apiUrl of apiUrls) {
+                try {
+                    const res = await fetch(apiUrl, { cache: 'no-store' });
+                    if (!res.ok) {
+                        attempts.push({ url: apiUrl, error: `HTTP ${res.status}` });
+                        continue;
+                    }
+                    const data = await res.json();
 
-            if (data.status === 'success' && Array.isArray(data.items)) {
-                const items = data.items.map(item => {
-                    const pubDate = item.published_at ? new Date(item.published_at) : new Date(item.pubDate || Date.now());
-                    const analysis = {
-                        level: (item.risk_impact_level || 'Low').toLowerCase() === 'moderate' ? 'moderate' : ((item.risk_impact_level || 'Low').toLowerCase() === 'high' ? 'high' : 'low'),
-                        impact: item.impact_type || 'Informational'
-                    };
-                    return {
-                        id: Math.random().toString(36).substr(2, 9),
-                        title: item.title || '—',
-                        source: item.source || 'Google News',
-                        description: (item.summary || '').substring(0, 150) + ((item.summary || '').length > 150 ? '...' : ''),
-                        date: pubDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-                        rawDate: pubDate,
-                        rawDateISO: pubDate.toISOString(),
-                        relativeLabel: getRelativeLabel(pubDate),
-                        isLive: isLiveWindow(pubDate, 24),
-                        link: item.link,
-                        riskLevel: analysis.level,
-                        impactType: analysis.impact
-                    };
-                });
+                    if (data.status === 'success' && Array.isArray(data.items)) {
+                        const items = data.items.map(item => {
+                            const pubDate = item.published_at ? new Date(item.published_at) : new Date(item.pubDate || Date.now());
+                            const analysis = {
+                                level: (item.risk_impact_level || 'Low').toLowerCase() === 'moderate' ? 'moderate' : ((item.risk_impact_level || 'Low').toLowerCase() === 'high' ? 'high' : 'low'),
+                                impact: item.impact_type || 'Informational'
+                            };
+                            return {
+                                id: Math.random().toString(36).substr(2, 9),
+                                title: item.title || '—',
+                                source: item.source || 'Google News',
+                                description: (item.summary || '').substring(0, 150) + ((item.summary || '').length > 150 ? '...' : ''),
+                                date: pubDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+                                rawDate: pubDate,
+                                rawDateISO: pubDate.toISOString(),
+                                relativeLabel: getRelativeLabel(pubDate),
+                                isLive: isLiveWindow(pubDate, LIVE_WINDOW_HOURS),
+                                link: item.link,
+                                riskLevel: analysis.level,
+                                impactType: analysis.impact
+                            };
+                        });
 
-                // ★ Sort by date: NEWEST FIRST (most recent news always on top)
-                items.sort((a, b) => b.rawDate - a.rawDate);
+                        // ★ Sort by date: NEWEST FIRST (most recent news always on top)
+                        items.sort((a, b) => b.rawDate - a.rawDate);
+                        LAST_NEWS_NOTE = data.note || null;
+                        LAST_NEWS_DEBUG = attempts.length ? attempts : null;
 
-                if (!query) {
-                    localStorage.setItem(cacheKey, JSON.stringify(items));
-                    localStorage.setItem(cacheKey + '_time', Date.now().toString());
+                        if (!query) {
+                            localStorage.setItem(cacheKey, JSON.stringify(items));
+                            localStorage.setItem(cacheKey + '_time', Date.now().toString());
+                        }
+
+                        return items;
+                    }
+
+                    attempts.push({ url: apiUrl, error: (data?.note || data?.message || 'Unexpected response') });
+                } catch (e) {
+                    attempts.push({ url: apiUrl, error: String(e?.message || e) });
                 }
+            }
 
-                return items;
+            LAST_NEWS_DEBUG = attempts.length ? attempts : null;
+            const best = attempts.find(a => a.error && a.error !== 'Failed to fetch') || attempts[0] || null;
+            LAST_NEWS_NOTE = best ? best.error : null;
+
+            // Fallback: if backend is unreachable, show last cached headlines (even if stale)
+            if (!query && cachedAny && cachedAny.length > 0) {
+                cachedAny.forEach(item => {
+                    item.rawDate = new Date(item.rawDateISO);
+                    item.relativeLabel = getRelativeLabel(item.rawDate);
+                    item.isLive = isLiveWindow(item.rawDate, LIVE_WINDOW_HOURS);
+                });
+                LAST_NEWS_NOTE = `Backend unreachable. Showing cached headlines. (${LAST_NEWS_NOTE || 'No details'})`;
+                return cachedAny;
             }
         } catch (e) {
             console.error("Fetch failed", e);
+            LAST_NEWS_NOTE = String(e?.message || e);
         } finally {
             if (loader) loader.style.display = 'none';
         }
@@ -172,12 +254,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. RENDERING ENGINE (BROADCAST STYLE) ---
     function renderNews(items) {
         if (!newsGrid) return;
-        newsGrid.innerHTML = items.length === 0 ? '<div style="text-align: center; padding: 60px;">No broadcast signals found for this sector.</div>' : '';
+        const displayItems = items.slice(0, FEED_DISPLAY_LIMIT);
+        if (displayItems.length === 0) {
+            const note = LAST_NEWS_NOTE ? `<div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${escapeHtml(LAST_NEWS_NOTE)}</div>` : '';
+            const debug = (LAST_NEWS_DEBUG && LAST_NEWS_DEBUG.length)
+                ? `<details style="margin-top: 14px; text-align: left; display: inline-block; max-width: 820px;"><summary style="cursor: pointer; color: var(--text-secondary); font-weight: 800; letter-spacing: 1px;">DEBUG</summary><div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">${LAST_NEWS_DEBUG.map(a => `${escapeHtml(a.url)}<br><span style="opacity:0.9;">→ ${escapeHtml(a.error)}</span>`).join('<br><br>')}</div></details>`
+                : '';
+            const hint = LAST_NEWS_NOTE ? `<div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.9;">Tip: set <code style="background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 6px;">localStorage.arthashastra_backend_base</code> to your backend URL and click RESCAN.</div>` : '';
+            const localHint = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+                ? `<div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.9;">Local fix: start the backend in another terminal with <code style="background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 6px;">python3 app.py</code> (port 5050) and refresh.</div>`
+                : '';
+            newsGrid.innerHTML = `<div style="text-align: center; padding: 60px;">No broadcast signals found for this sector.${note}${hint}${localHint}${debug}</div>`;
+            if (highRiskCount) highRiskCount.textContent = '0';
+            if (complianceCount) complianceCount.textContent = '0';
+            if (liquidityCount) liquidityCount.textContent = '0';
+            return;
+        }
+        newsGrid.innerHTML = '';
 
         // Update Statistics
         let high = 0, comp = 0, liq = 0;
 
-        items.forEach((item, index) => {
+        displayItems.forEach((item, index) => {
             if (item.riskLevel === 'high') high++;
             if (item.impactType.includes('Compliance')) comp++;
             if (item.impactType.includes('Liquidity')) liq++;
@@ -213,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (liquidityCount) liquidityCount.textContent = liq;
 
         // Update Ticker — show most recent high-risk or RBI items
-        const highRiskItems = items.filter(i => i.riskLevel === 'high').concat(items.filter(i => i.title.toLowerCase().includes('rbi')));
+        const highRiskItems = displayItems.filter(i => i.riskLevel === 'high').concat(displayItems.filter(i => i.title.toLowerCase().includes('rbi')));
         if (tickerContent && highRiskItems.length > 0) {
             tickerContent.innerHTML = highRiskItems.map(i => ` <span style="color: var(--antique-gold);">●</span> ${i.title.toUpperCase()}`).join(' &nbsp;&nbsp;&nbsp;&nbsp; ');
         }

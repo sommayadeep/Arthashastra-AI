@@ -137,21 +137,49 @@ class BankingNewsOrchestrator:
 
         return {"risk_impact_level": level, "impact_type": impact}
 
-    def fetch_live_news(self, query: str = "Indian Banking Sector", hours: int = 24) -> Dict[str, Any]:
+    def fetch_live_news(self, query: str = "Indian Banking Sector", hours: int = 168, limit: int = 30) -> Dict[str, Any]:
         """
         Live news via RSS (no API keys):
         - Google News RSS for query, filtered client-side by recency.
         """
         q = query or "Indian Banking Sector"
+        try:
+            hours_i = int(hours or 168)
+        except Exception:
+            hours_i = 168
+        hours_i = max(1, min(hours_i, 24 * 31))
+
+        try:
+            limit_i = int(limit or 30)
+        except Exception:
+            limit_i = 30
+        limit_i = max(1, min(limit_i, 100))
+
         rss_url = (
             "https://news.google.com/rss/search?q="
             + quote(f"{q} banking india")
             + "&hl=en-IN&gl=IN&ceid=IN:en"
         )
-        raw = self._fetch_url(rss_url)
-        items = self._parse_google_news_rss(raw)
+        fetched_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        try:
+            raw = self._fetch_url(rss_url)
+            items = self._parse_google_news_rss(raw)
+        except Exception as e:
+            msg = str(e) or e.__class__.__name__
+            if len(msg) > 200:
+                msg = msg[:200] + "…"
+            return {
+                "status": "error",
+                "query": q,
+                "hours": hours_i,
+                "limit": limit_i,
+                "count": 0,
+                "items": [],
+                "fetched_at": fetched_at,
+                "note": f"News fetch failed: {msg}",
+            }
 
-        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=max(1, int(hours or 24)))
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours_i)
         filtered: List[Dict[str, Any]] = []
         for it in items:
             ts = it.get("published_at")
@@ -168,14 +196,16 @@ class BankingNewsOrchestrator:
                 filtered.append({**it, **meta})
 
         filtered.sort(key=lambda x: x.get("published_at") or "", reverse=True)
+        returned = filtered[:limit_i]
         return {
             "status": "success",
             "query": q,
-            "hours": hours,
+            "hours": hours_i,
+            "limit": limit_i,
             "count": len(filtered),
-            "items": filtered[:30],
-            "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "note": None if filtered else f"No items found in the last {hours} hours. Try widening the window.",
+            "items": returned,
+            "fetched_at": fetched_at,
+            "note": None if filtered else f"No items found in the last {hours_i} hours. Try widening the window.",
         }
 
 if __name__ == "__main__":

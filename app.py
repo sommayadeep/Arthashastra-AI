@@ -69,12 +69,17 @@ try:
     @app.get("/api/news")
     def get_news():
         query = request.args.get("q", "Indian Banking Sector")
-        hours = request.args.get("hours", "24")
+        hours = request.args.get("hours", "168")
+        limit = request.args.get("limit", "30")
         try:
             h = int(hours)
         except ValueError:
-            h = 24
-        return jsonify(agent.fetch_live_news(query, hours=h))
+            h = 168
+        try:
+            l = int(limit)
+        except ValueError:
+            l = 30
+        return jsonify(agent.fetch_live_news(query, hours=h, limit=l))
 
     @app.post("/api/case/analyze")
     def analyze_case():
@@ -116,7 +121,17 @@ except Exception:
             if parsed.path == "/api/news":
                 qs = parse_qs(parsed.query)
                 query = (qs.get("q") or ["Indian Banking Sector"])[0]
-                data = agent.fetch_live_news(query)
+                hours = (qs.get("hours") or ["168"])[0]
+                limit = (qs.get("limit") or ["30"])[0]
+                try:
+                    h = int(hours)
+                except ValueError:
+                    h = 168
+                try:
+                    l = int(limit)
+                except ValueError:
+                    l = 30
+                data = agent.fetch_live_news(query, hours=h, limit=l)
                 return _json_response(self, data, 200)
 
             return _json_response(self, {"status": "error", "message": "Not found"}, 404)
