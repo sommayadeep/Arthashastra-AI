@@ -21,6 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let GLOBAL_NEWS = [];
 
+    function getBackendBase() {
+        const stored = localStorage.getItem('arthashastra_backend_base');
+        if (stored) return stored.replace(/\/+$/, '');
+        // Production default (Render)
+        if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
+            return 'https://arthashastra-ai-backend.onrender.com';
+        }
+        return '';
+    }
+
     // ★ Cache version — increment to bust old stale caches
     const CACHE_VERSION = 'v3';
     const cacheVersionKey = 'banking_news_version';
@@ -110,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newsGrid) newsGrid.innerHTML = '';
 
         const searchQuery = query ? query : 'Indian Banking Sector';
-        const apiUrl = `/api/news?q=${encodeURIComponent(searchQuery)}&hours=24`;
+        const base = getBackendBase();
+        const apiUrl = `${base}/api/news?q=${encodeURIComponent(searchQuery)}&hours=24`;
 
         try {
             const res = await fetch(apiUrl, { cache: 'no-store' });
