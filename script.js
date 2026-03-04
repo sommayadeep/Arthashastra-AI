@@ -1681,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.innerHTML = `<td></td><td></td><td></td>
           <td><span class="risk-tag ${displayRiskClass}"></span></td>
           <td></td><td></td>
-          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View Case</a></td>`;
+          <td><a href="view-case.html?id=${encodeURIComponent(c.id)}" class="view-btn">View Case</a></td>`;
 
         row.cells[0].textContent = c.id;
         row.cells[1].textContent = c.company;
@@ -1705,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.innerHTML = `<td></td>
           <td><span class="risk-tag ${displayRiskClass}"></span></td>
           <td></td><td></td>
-          <td><a href="#" class="view-btn" onclick="viewArchivedCase('${c.id}'); return false;">View</a></td>`;
+          <td><a href="view-case.html?id=${encodeURIComponent(c.id)}" class="view-btn">View</a></td>`;
 
         row.cells[0].textContent = c.company;
         row.cells[1].querySelector('.risk-tag').textContent = c.grade;
@@ -2285,14 +2285,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Attach listeners to static table buttons
   document.querySelectorAll('.view-btn').forEach(btn => {
-    if (!btn.hasAttribute('onclick')) {
-      const row = btn.closest('tr');
-      const caseId = row.cells[0].innerText;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        viewArchivedCase(caseId);
-      });
-    }
+    if (btn.hasAttribute('onclick')) return;
+    const href = (btn.getAttribute('href') || '').trim();
+    if (href && href !== '#') return; // already a direct link
+    const row = btn.closest('tr');
+    const caseId = row?.cells?.[0]?.innerText?.trim();
+    if (!caseId) return;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      viewArchivedCase(caseId);
+    });
   });
 
   // Utility to clear legacy data
@@ -2651,6 +2653,9 @@ document.addEventListener('DOMContentLoaded', () => {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> The model flags this as <span style="color:#c0392b; font-weight:bold;">HIGH RISK (REJECT)</span>. A heavily stressed DSCR of ${dscrVal}x combined with elevated counterparty risks indicates a failure to meet Vivriti Capital's baseline prudential thresholds. Severe liquidity alerts detected in connected promoter networks.`;
         }
       }
+    } else {
+      alert(`Case not found in Dharma Ledger: ${viewId}`);
+      window.location.href = 'all-cases.html';
     }
   }
 
