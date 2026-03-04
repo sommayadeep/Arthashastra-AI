@@ -5,6 +5,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const q = (s) => document.querySelector(s);
   const qa = (s) => Array.from(document.querySelectorAll(s));
 
+  function safeStorageGet(key) {
+    try { return window.localStorage.getItem(key); } catch { return null; }
+  }
+
+  function safeStorageSet(key, value) {
+    try { window.localStorage.setItem(key, value); } catch { }
+  }
+
+  function safeStorageRemove(key) {
+    try { window.localStorage.removeItem(key); } catch { }
+  }
+
+  function readArchive() {
+    const raw = safeStorageGet('mauryan_archive');
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      // Auto-heal corrupted storage to avoid breaking the UI
+      safeStorageSet('mauryan_archive_corrupt_backup', raw);
+      safeStorageRemove('mauryan_archive');
+      return [];
+    }
+  }
+
+  function writeArchive(arr) {
+    const safe = Array.isArray(arr) ? arr : [];
+    safeStorageSet('mauryan_archive', JSON.stringify(safe));
+  }
+
   function escapeHtml(s) {
     return String(s ?? '')
       .replaceAll('&', '&amp;')
@@ -15,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getBackendBase() {
-    const stored = localStorage.getItem('arthashastra_backend_base');
+    const stored = safeStorageGet('arthashastra_backend_base');
     if (stored) return stored;
     // Production default (Render)
     if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
@@ -1645,9 +1676,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Save to localStorage
-    const archivedCases = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
+    const archivedCases = readArchive();
     archivedCases.unshift(caseData);
-    localStorage.setItem('mauryan_archive', JSON.stringify(archivedCases));
+    writeArchive(archivedCases);
 
     // UI Feedback
     btn.innerHTML = '✨ Secured in Ledger';
@@ -1664,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Populate Tables from Ledger if they exist
   const allCasesBody = q('#allCasesBody');
   const recentCasesBody = q('#recentCasesBody');
-  const archived = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
+  const archived = readArchive();
 
   if (archived.length > 0) {
     archived.forEach(c => {
@@ -2273,7 +2304,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Detailed View Logic
   window.viewArchivedCase = function (caseId) {
-    const archived = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
+    const archived = readArchive();
     const c = archived.find(item => item.id === caseId) || legacyRecords[caseId];
 
     if (c) {
@@ -2300,7 +2331,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Utility to clear legacy data
   window.clearDharmaLedger = function () {
     if (confirm("Are you sure you want to clear the Dharma Ledger? This will remove all old test cases and reset your institutional history.")) {
-      localStorage.removeItem('mauryan_archive');
+      safeStorageRemove('mauryan_archive');
       location.reload();
     }
   };
@@ -2312,8 +2343,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const h = (window.location.hash || '').trim();
     if (h && h.startsWith('#') && h.length > 1) viewId = h;
   }
+  if (viewId && String(viewId).includes('%23')) {
+    try { viewId = decodeURIComponent(String(viewId)); } catch { }
+  }
   if (viewId) {
-    const archived = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
+    const archived = readArchive();
     const c = archived.find(item => item.id === viewId) || legacyRecords[viewId];
 
     if (c) {
