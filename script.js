@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const q = (s) => document.querySelector(s);
   const qa = (s) => Array.from(document.querySelectorAll(s));
 
+  function safeSessionGet(key) {
+    try { return window.sessionStorage.getItem(key); } catch { return null; }
+  }
+
+  function safeSessionSet(key, value) {
+    try { window.sessionStorage.setItem(key, value); } catch { }
+  }
+
   function safeStorageGet(key) {
     try { return window.localStorage.getItem(key); } catch { return null; }
   }
@@ -38,11 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function escapeHtml(s) {
     return String(s ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function getBackendBase() {
@@ -1541,41 +1549,54 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 3. SCROLL REVEAL ENGINE ---
-  const revealElements = document.querySelectorAll('section, .card, .stat-card, .metric-box, table tr');
+  try {
+    const revealElements = document.querySelectorAll('section, .card, .stat-card, .metric-box, table tr');
 
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('reveal-active');
-        revealObserver.unobserve(entry.target); // Reveal only once
+    // Inject active class styles dynamically for simplicity
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .reveal-active {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
       }
-    });
-  }, {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  });
+      
+      /* Staggered children animation */
+      .reveal-active > * {
+        animation: fadeInUp 0.4s forwards;
+      }
+    `;
+    document.head.appendChild(style);
 
-  revealElements.forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(30px)';
-    el.style.transition = 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)';
-    revealObserver.observe(el);
-  });
+    const canObserve = typeof window !== 'undefined' && typeof window.IntersectionObserver === 'function';
 
-  // Inject active class styles dynamically for simplicity
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .reveal-active {
-      opacity: 1 !important;
-      transform: translateY(0) !important;
+    if (!canObserve) {
+      for (let i = 0; i < revealElements.length; i++) {
+        revealElements[i].classList.add('reveal-active');
+      }
+    } else {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-active');
+            revealObserver.unobserve(entry.target); // Reveal only once
+          }
+        });
+      }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      });
+
+      for (let i = 0; i < revealElements.length; i++) {
+        const el = revealElements[i];
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)';
+        revealObserver.observe(el);
+      }
     }
-    
-    /* Staggered children animation */
-    .reveal-active > * {
-      animation: fadeInUp 0.4s forwards;
-    }
-  `;
-  document.head.appendChild(style);
+  } catch (e) {
+    console.warn('Reveal engine disabled:', e);
+  }
 
   // --- 4. SLIDING NAVBAR UNDERLINE ENGINE ---
   const navContainer = q('.nav-links');
@@ -2308,6 +2329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const c = archived.find(item => item.id === caseId) || legacyRecords[caseId];
 
     if (c) {
+      safeSessionSet('arthashastra_last_case_id', caseId);
       window.location.href = `view-case.html?id=${encodeURIComponent(caseId)}`;
     } else {
       alert(`Mauryan Intelligence Record: Deep Decryption for institutional case #${caseId.replace('#', '')} is currently locked or unavailable.`);
@@ -2318,14 +2340,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.view-btn').forEach(btn => {
     if (btn.hasAttribute('onclick')) return;
     const href = (btn.getAttribute('href') || '').trim();
-    if (href && href !== '#') return; // already a direct link
     const row = btn.closest('tr');
     const caseId = row?.cells?.[0]?.innerText?.trim();
     if (!caseId) return;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      viewArchivedCase(caseId);
-    });
+
+    // Always persist last-viewed case for robust navigation (even if URL loses the query string)
+    btn.addEventListener('click', () => safeSessionSet('arthashastra_last_case_id', caseId));
+
+    // If it's not a direct link, route via JS
+    if (!href || href === '#') {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        viewArchivedCase(caseId);
+      });
+    }
   });
 
   // Utility to clear legacy data
@@ -2343,8 +2371,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const h = (window.location.hash || '').trim();
     if (h && h.startsWith('#') && h.length > 1) viewId = h;
   }
+  if (!viewId || !String(viewId).trim()) {
+    const last = safeSessionGet('arthashastra_last_case_id');
+    if (last && String(last).trim()) viewId = String(last).trim();
+  }
   if (viewId && String(viewId).includes('%23')) {
     try { viewId = decodeURIComponent(String(viewId)); } catch { }
+  }
+  const isViewCasePage = !!q('#viewCompany') && !!q('#viewCaseId');
+  if (isViewCasePage && (!viewId || !String(viewId).trim())) {
+    viewId = '#1290'; // fail-safe: never show an empty manuscript
   }
   if (viewId) {
     const archived = readArchive();
@@ -2829,18 +2865,30 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && !countersStarted) {
-          countersStarted = true;
-          animateCounters();
-          counterObserver.disconnect();
-        }
-      });
-    }, { threshold: 0.3 });
+    try {
+      const canObserve = typeof window !== 'undefined' && typeof window.IntersectionObserver === 'function';
+      if (!canObserve) {
+        // Fallback: start immediately
+        animateCounters();
+      } else {
+        const counterObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && !countersStarted) {
+              countersStarted = true;
+              animateCounters();
+              counterObserver.disconnect();
+            }
+          });
+        }, { threshold: 0.3 });
 
-    const statsBar = q('.stats-bar');
-    if (statsBar) counterObserver.observe(statsBar);
+        const statsBar = q('.stats-bar');
+        if (statsBar) counterObserver.observe(statsBar);
+        else animateCounters();
+      }
+    } catch (e) {
+      console.warn('Counter observer disabled:', e);
+      animateCounters();
+    }
   }
 
   // --- 10. CURSOR TRAIL EFFECT (Desktop Only) ---
