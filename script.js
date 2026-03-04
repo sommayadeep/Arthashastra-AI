@@ -1717,12 +1717,558 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Legacy Institutional Records (Static Rows)
+  function buildLegacyAuditItems({ extracted, research, sentiment, docLabel = 'Legacy Demo Fixtures' } = {}) {
+    const items = [];
+    const ex = extracted || {};
+    const gst = ex.gst || {};
+    const bank = ex.bank || {};
+    const itr = ex.itr || {};
+
+    const itcVar = computeGSTReconciliationVariancePct(ex);
+    if (itcVar != null) {
+      items.push({
+        id: 'gst_recon_itc',
+        title: 'GSTR-2A vs GSTR-3B reconciliation (ITC)',
+        source: { doc: 'GST', file: docLabel, fields: ['gstr_2a_itc_inr', 'gstr_3b_itc_inr'] },
+        evidence: {
+          gstr_2a_itc_inr: gst.gstr_2a_itc_inr,
+          gstr_3b_itc_inr: gst.gstr_3b_itc_inr,
+          variance_pct: itcVar,
+        },
+      });
+    }
+
+    const mismatchVar = computeMismatchVariancePct(ex);
+    if (mismatchVar != null) {
+      items.push({
+        id: 'gst_bank_mismatch',
+        title: 'GST ↔ Bank inflow triangulation',
+        source: { doc: 'GST+Bank', file: docLabel, fields: ['turnover_inr', 'inflow_inr'] },
+        evidence: {
+          gst_turnover_inr: gst.turnover_inr,
+          bank_inflow_inr: bank.inflow_inr,
+          variance_pct: mismatchVar,
+        },
+      });
+    }
+
+    if (itr.revenue_inr != null && itr.revenue_prev_inr != null && itr.electricity_expense_inr != null && itr.electricity_expense_prev_inr != null) {
+      const revGrowth = itr.revenue_prev_inr > 0 ? Math.round(((itr.revenue_inr - itr.revenue_prev_inr) / itr.revenue_prev_inr) * 100) : null;
+      const utilGrowth = itr.electricity_expense_prev_inr > 0 ? Math.round(((itr.electricity_expense_inr - itr.electricity_expense_prev_inr) / itr.electricity_expense_prev_inr) * 100) : null;
+      items.push({
+        id: 'triangulation_utilities',
+        title: 'Truth-Seeker: Utilities vs Revenue growth',
+        source: { doc: 'ITR/P&L', file: docLabel, fields: ['revenue_inr', 'revenue_prev_inr', 'electricity_expense_inr', 'electricity_expense_prev_inr'] },
+        evidence: {
+          revenue_inr: itr.revenue_inr,
+          revenue_prev_inr: itr.revenue_prev_inr,
+          revenue_growth_pct: revGrowth,
+          utilities_inr: itr.electricity_expense_inr,
+          utilities_prev_inr: itr.electricity_expense_prev_inr,
+          utilities_growth_pct: utilGrowth,
+        },
+      });
+    }
+
+    if (bank.pass_through_ratio != null || bank.round_trip_ratio != null) {
+      items.push({
+        id: 'circular_trading',
+        title: 'Circular trading heuristic (pass-through + mirrored flows)',
+        source: { doc: 'Bank', file: docLabel, fields: ['pass_through_ratio', 'round_trip_pairs', 'round_trip_ratio'] },
+        evidence: {
+          pass_through_ratio: bank.pass_through_ratio,
+          round_trip_pairs: bank.round_trip_pairs,
+          round_trip_ratio: bank.round_trip_ratio,
+        },
+      });
+    }
+
+    if (research) {
+      items.push({
+        id: 'research_sources',
+        title: 'External research dossier (MCA + e-Courts)',
+        source: { doc: 'MCA+e-Courts', file: docLabel, fields: ['mca', 'ecourts', 'governance'] },
+        evidence: {
+          matched_on: research.matched_on,
+          mca_cin: research?.mca?.cin,
+          ecourts_ongoing: research?.ecourts?.ongoing_count,
+        },
+      });
+    }
+
+    if (sentiment) {
+      items.push({
+        id: 'ews_sentiment',
+        title: 'EWS sentiment (qualitative disclosures / minutes / rating notes)',
+        source: { doc: 'Qualitative', file: docLabel, fields: ['sentiment_score', 'signals'] },
+        evidence: { label: sentiment.label, score: sentiment.score, signals: sentiment.signals },
+      });
+    }
+
+    return items;
+  }
+
+  function legacyResearchFixture(company, sector) {
+    const nowIso = new Date().toISOString();
+    const sources = {
+      mca: 'MCA filings (directors, auditor, charges, related entities)',
+      ecourts: 'e-Courts / NCLT case metadata (demo fixture)',
+    };
+
+    const common = {
+      fetched_at: nowIso,
+      matched_on: 'company',
+      sources,
+      sector: sector || null,
+    };
+
+    if (company === 'Reliance Industries Ltd') {
+      const auditorFirm = 'Audit Firm A (Demo)';
+      return {
+        ...common,
+        mca: {
+          cin: 'DEMO-CIN-RIL-0001',
+          status: 'Active',
+          roc: 'ROC Mumbai',
+          last_filing_date: '2025-09-30',
+          statutory_auditor: { firm: auditorFirm, partner: 'Lead Partner (Demo)', tenure_years: 4 },
+          directors: [
+            { name: 'Mukesh Ambani', din: 'DEMO-DIN-0001', role: 'Chairman & MD', board_seats: 8, distressed_boards: 0 },
+            { name: 'Nita Ambani', din: 'DEMO-DIN-0002', role: 'Director', board_seats: 5, distressed_boards: 0 },
+          ],
+          related_entities: [
+            { name: 'Jio Platforms Ltd (Demo)', cin: 'DEMO-CIN-JIO-0001', cross_holding_pct: 100, auditor_firm: auditorFirm, risk_note: 'Large intra-group flows; validate arm’s-length pricing.' },
+            { name: 'Reliance Retail Ventures Ltd (Demo)', cin: 'DEMO-CIN-RRV-0001', cross_holding_pct: 100, auditor_firm: auditorFirm, risk_note: 'Related-party exposure; monitor working-capital churn.' },
+          ],
+          charges: { active_count: 2, active_amount_inr: 250000000000, lender: 'Consortium (Demo)' },
+          flags: ['Large-cap governance baseline; related-party monitoring recommended.'],
+        },
+        ecourts: {
+          ongoing_count: 2,
+          closed_count: 7,
+          highlights: ['2 ongoing contract/tax matters (review contingent liabilities).'],
+          cases: [
+            { court: 'NCLT (Demo)', case_no: 'NCLT/DEMO/2025/001', subject: 'Commercial', status: 'Pending', last_hearing: '2026-01-12' },
+            { court: 'High Court (Demo)', case_no: 'HC/DEMO/2024/019', subject: 'Tax', status: 'Pending', last_hearing: '2026-02-05' },
+          ],
+        },
+        governance: {
+          flags: ['Auditor overlap across key subsidiaries (expected group structure) — independence review recommended.'],
+          ghost_directors: [],
+          auditor_overlap: [{ entity: 'Jio Platforms Ltd (Demo)', auditor_firm, cross_holding_pct: 100 }],
+        },
+        network: {
+          nodes: [
+            { id: 'company', label: company, type: 'company' },
+            { id: 'auditor', label: auditorFirm, type: 'auditor' },
+            { id: 'dir_0', label: 'Mukesh Ambani', type: 'director' },
+            { id: 'dir_1', label: 'Nita Ambani', type: 'director' },
+            { id: 'rel_0', label: 'Jio Platforms (Demo)', type: 'related' },
+            { id: 'rel_1', label: 'Reliance Retail (Demo)', type: 'related' },
+          ],
+          edges: [
+            { from: 'company', to: 'auditor', type: 'audited_by' },
+            { from: 'company', to: 'dir_0', type: 'director_of' },
+            { from: 'company', to: 'dir_1', type: 'director_of' },
+            { from: 'company', to: 'rel_0', type: 'related_party' },
+            { from: 'company', to: 'rel_1', type: 'related_party' },
+            { from: 'auditor', to: 'rel_0', type: 'audits' },
+            { from: 'auditor', to: 'rel_1', type: 'audits' },
+          ],
+        },
+      };
+    }
+
+    if (company === 'Adani Enterprises') {
+      const auditorFirm = 'Audit Firm B (Demo)';
+      return {
+        ...common,
+        mca: {
+          cin: 'DEMO-CIN-ADANI-0001',
+          status: 'Active',
+          roc: 'ROC Ahmedabad',
+          last_filing_date: '2025-09-30',
+          statutory_auditor: { firm: auditorFirm, partner: 'Lead Partner (Demo)', tenure_years: 6 },
+          directors: [
+            { name: 'Gautam Adani', din: 'DEMO-DIN-0101', role: 'Chairman', board_seats: 11, distressed_boards: 3 },
+            { name: 'Director (Demo)', din: 'DEMO-DIN-0102', role: 'Director', board_seats: 7, distressed_boards: 1 },
+          ],
+          related_entities: [
+            { name: 'Sister Concern A (Demo)', cin: 'DEMO-CIN-SIS-0101', cross_holding_pct: 18, auditor_firm: auditorFirm, risk_note: 'Inter-company guarantees observed.' },
+            { name: 'Sister Concern B (Demo)', cin: 'DEMO-CIN-SIS-0102', cross_holding_pct: 14, auditor_firm: auditorFirm, risk_note: 'High leverage; monitor group contagion.' },
+          ],
+          charges: { active_count: 4, active_amount_inr: 180000000000, lender: 'Multiple lenders (Demo)' },
+          flags: ['Charge intensity elevated; group-level exposure mapping required.'],
+        },
+        ecourts: {
+          ongoing_count: 3,
+          closed_count: 5,
+          highlights: ['3 ongoing litigation matters (review potential exposure).'],
+          cases: [
+            { court: 'NCLT (Demo)', case_no: 'NCLT/DEMO/2025/117', subject: 'Contract dispute', status: 'Pending', last_hearing: '2026-02-18' },
+            { court: 'District Court (Demo)', case_no: 'DC/DEMO/2024/044', subject: 'Commercial', status: 'Pending', last_hearing: '2026-01-29' },
+          ],
+        },
+        governance: {
+          flags: [
+            'Ghost director risk: Gautam Adani holds 10+ board seats.',
+            'Auditor independence risk: auditor overlap across sister concerns with cross-holdings.',
+          ],
+          ghost_directors: [{ name: 'Gautam Adani', board_seats: 11, distressed_boards: 3 }],
+          auditor_overlap: [{ entity: 'Sister Concern A (Demo)', auditor_firm, cross_holding_pct: 18 }],
+        },
+        network: {
+          nodes: [
+            { id: 'company', label: company, type: 'company' },
+            { id: 'auditor', label: auditorFirm, type: 'auditor' },
+            { id: 'dir_0', label: 'Gautam Adani', type: 'director' },
+            { id: 'dir_1', label: 'Director (Demo)', type: 'director' },
+            { id: 'rel_0', label: 'Sister Concern A', type: 'related' },
+            { id: 'rel_1', label: 'Sister Concern B', type: 'related' },
+          ],
+          edges: [
+            { from: 'company', to: 'auditor', type: 'audited_by' },
+            { from: 'company', to: 'dir_0', type: 'director_of' },
+            { from: 'company', to: 'dir_1', type: 'director_of' },
+            { from: 'company', to: 'rel_0', type: 'related_party' },
+            { from: 'company', to: 'rel_1', type: 'related_party' },
+            { from: 'auditor', to: 'rel_0', type: 'audits' },
+            { from: 'auditor', to: 'rel_1', type: 'audits' },
+          ],
+        },
+      };
+    }
+
+    if (company === 'Tata Motors') {
+      const auditorFirm = 'Audit Firm C (Demo)';
+      return {
+        ...common,
+        mca: {
+          cin: 'DEMO-CIN-TM-0001',
+          status: 'Active',
+          roc: 'ROC Mumbai',
+          last_filing_date: '2025-09-30',
+          statutory_auditor: { firm: auditorFirm, partner: 'Lead Partner (Demo)', tenure_years: 3 },
+          directors: [
+            { name: 'Tata Sons (Nominee)', din: 'DEMO-DIN-0201', role: 'Promoter', board_seats: 5, distressed_boards: 0 },
+            { name: 'Independent Director (Demo)', din: 'DEMO-DIN-0202', role: 'Independent', board_seats: 6, distressed_boards: 0 },
+          ],
+          related_entities: [
+            { name: 'Sister Concern (Auto) (Demo)', cin: 'DEMO-CIN-AUTO-0201', cross_holding_pct: 12, auditor_firm: auditorFirm, risk_note: 'Related-party purchases; confirm transfer pricing.' },
+          ],
+          charges: { active_count: 2, active_amount_inr: 95000000000, lender: 'Consortium (Demo)' },
+          flags: ['No abnormal governance red-flags in fixture; monitor cyclicality.'],
+        },
+        ecourts: { ongoing_count: 1, closed_count: 6, highlights: ['Routine commercial matters observed (low materiality in fixture).'], cases: [] },
+        governance: { flags: [], ghost_directors: [], auditor_overlap: [] },
+        network: {
+          nodes: [
+            { id: 'company', label: company, type: 'company' },
+            { id: 'auditor', label: auditorFirm, type: 'auditor' },
+            { id: 'dir_0', label: 'Promoter (Nominee)', type: 'director' },
+            { id: 'dir_1', label: 'Independent Director', type: 'director' },
+            { id: 'rel_0', label: 'Auto Sister Concern', type: 'related' },
+          ],
+          edges: [
+            { from: 'company', to: 'auditor', type: 'audited_by' },
+            { from: 'company', to: 'dir_0', type: 'director_of' },
+            { from: 'company', to: 'dir_1', type: 'director_of' },
+            { from: 'company', to: 'rel_0', type: 'related_party' },
+            { from: 'auditor', to: 'rel_0', type: 'audits' },
+          ],
+        },
+      };
+    }
+
+    if (company === 'Zomato Ltd') {
+      const auditorFirm = 'Audit Firm D (Demo)';
+      return {
+        ...common,
+        mca: {
+          cin: 'DEMO-CIN-ZOM-0001',
+          status: 'Active',
+          roc: 'ROC Delhi',
+          last_filing_date: '2025-09-30',
+          statutory_auditor: { firm: auditorFirm, partner: 'Lead Partner (Demo)', tenure_years: 2 },
+          directors: [
+            { name: 'Founder (Demo)', din: 'DEMO-DIN-0301', role: 'CEO', board_seats: 4, distressed_boards: 1 },
+            { name: 'Director (Demo)', din: 'DEMO-DIN-0302', role: 'Director', board_seats: 9, distressed_boards: 2 },
+          ],
+          related_entities: [
+            { name: 'Sister Concern (Food) (Demo)', cin: 'DEMO-CIN-FOOD-0301', cross_holding_pct: 16, auditor_firm: auditorFirm, risk_note: 'High round-trip settlement activity (merchant payouts).'},
+          ],
+          charges: { active_count: 0, active_amount_inr: 0, lender: null },
+          flags: ['Fast-growth profile; validate unit economics and cash burn.'],
+        },
+        ecourts: { ongoing_count: 1, closed_count: 2, highlights: ['Consumer/commercial disputes present (review reputational risk).'], cases: [] },
+        governance: {
+          flags: ['Auditor overlap across related entity with cross-holdings — validate independence and revenue recognition controls.'],
+          ghost_directors: [],
+          auditor_overlap: [{ entity: 'Sister Concern (Food) (Demo)', auditor_firm, cross_holding_pct: 16 }],
+        },
+        network: {
+          nodes: [
+            { id: 'company', label: company, type: 'company' },
+            { id: 'auditor', label: auditorFirm, type: 'auditor' },
+            { id: 'dir_0', label: 'Founder (Demo)', type: 'director' },
+            { id: 'dir_1', label: 'Director (Demo)', type: 'director' },
+            { id: 'rel_0', label: 'Food Sister Concern', type: 'related' },
+          ],
+          edges: [
+            { from: 'company', to: 'auditor', type: 'audited_by' },
+            { from: 'company', to: 'dir_0', type: 'director_of' },
+            { from: 'company', to: 'dir_1', type: 'director_of' },
+            { from: 'company', to: 'rel_0', type: 'related_party' },
+            { from: 'auditor', to: 'rel_0', type: 'audits' },
+          ],
+        },
+      };
+    }
+
+    if (company === 'InterGlobe Aviation') {
+      const auditorFirm = 'Audit Firm E (Demo)';
+      return {
+        ...common,
+        mca: {
+          cin: 'DEMO-CIN-INDIGO-0001',
+          status: 'Active',
+          roc: 'ROC Delhi',
+          last_filing_date: '2025-09-30',
+          statutory_auditor: { firm: auditorFirm, partner: 'Lead Partner (Demo)', tenure_years: 3 },
+          directors: [
+            { name: 'Promoter (Demo)', din: 'DEMO-DIN-0401', role: 'Director', board_seats: 6, distressed_boards: 0 },
+            { name: 'Independent Director (Demo)', din: 'DEMO-DIN-0402', role: 'Independent', board_seats: 8, distressed_boards: 1 },
+          ],
+          related_entities: [
+            { name: 'Sister Concern (Ops) (Demo)', cin: 'DEMO-CIN-OPS-0401', cross_holding_pct: 12, auditor_firm: auditorFirm, risk_note: 'Fuel exposure; hedging disclosures required.' },
+          ],
+          charges: { active_count: 2, active_amount_inr: 55000000000, lender: 'Consortium (Demo)' },
+          flags: ['Aviation sector headwinds; monitor fuel and rate sensitivity.'],
+        },
+        ecourts: { ongoing_count: 2, closed_count: 4, highlights: ['2 ongoing contractual disputes (review provisions).'], cases: [] },
+        governance: { flags: [], ghost_directors: [], auditor_overlap: [] },
+        network: {
+          nodes: [
+            { id: 'company', label: company, type: 'company' },
+            { id: 'auditor', label: auditorFirm, type: 'auditor' },
+            { id: 'dir_0', label: 'Promoter (Demo)', type: 'director' },
+            { id: 'dir_1', label: 'Independent Director', type: 'director' },
+            { id: 'rel_0', label: 'Ops Sister Concern', type: 'related' },
+          ],
+          edges: [
+            { from: 'company', to: 'auditor', type: 'audited_by' },
+            { from: 'company', to: 'dir_0', type: 'director_of' },
+            { from: 'company', to: 'dir_1', type: 'director_of' },
+            { from: 'company', to: 'rel_0', type: 'related_party' },
+            { from: 'auditor', to: 'rel_0', type: 'audits' },
+          ],
+        },
+      };
+    }
+
+    return { ...common, mca: null, ecourts: null, governance: { flags: [], ghost_directors: [], auditor_overlap: [] }, network: { nodes: [], edges: [] } };
+  }
+
+  function legacyExtractedFixture(company) {
+    // INR units are illustrative; scoring uses relative variances.
+    if (company === 'Reliance Industries Ltd') {
+      return {
+        gst: { turnover_inr: 2400000000000, gstr_2a_itc_inr: 12000000000, gstr_3b_itc_inr: 11800000000 },
+        itr: {
+          profit_inr: 750000000000,
+          revenue_inr: 9000000000000,
+          revenue_prev_inr: 8300000000000,
+          electricity_expense_inr: 52000000000,
+          electricity_expense_prev_inr: 49000000000,
+          legal_expense_inr: 2100000000,
+          legal_expense_prev_inr: 2050000000,
+        },
+        bank: {
+          inflow_inr: 2320000000000,
+          outflow_inr: 2200000000000,
+          avg_balance_inr: 180000000000,
+          min_balance_inr: 140000000000,
+          bounce_count: 0,
+          debt_service_inr: 140000000000,
+          pass_through_ratio: 0.72,
+          round_trip_pairs: 3,
+          round_trip_ratio: 0.05,
+        },
+      };
+    }
+    if (company === 'Adani Enterprises') {
+      return {
+        gst: { turnover_inr: 1000000000000, gstr_2a_itc_inr: 6500000000, gstr_3b_itc_inr: 7400000000 },
+        itr: {
+          profit_inr: 12000000000,
+          revenue_inr: 340000000000,
+          revenue_prev_inr: 270000000000,
+          electricity_expense_inr: 4600000000,
+          electricity_expense_prev_inr: 3900000000,
+          legal_expense_inr: 2200000000,
+          legal_expense_prev_inr: 1400000000,
+        },
+        bank: {
+          inflow_inr: 650000000000,
+          outflow_inr: 635000000000,
+          avg_balance_inr: 28000000000,
+          min_balance_inr: 6500000000,
+          bounce_count: 2,
+          debt_service_inr: 8000000000,
+          pass_through_ratio: 0.98,
+          round_trip_pairs: 8,
+          round_trip_ratio: 0.38,
+        },
+      };
+    }
+    if (company === 'Tata Motors') {
+      return {
+        gst: { turnover_inr: 2100000000000, gstr_2a_itc_inr: 9800000000, gstr_3b_itc_inr: 10200000000 },
+        itr: {
+          profit_inr: 75000000000,
+          revenue_inr: 3300000000000,
+          revenue_prev_inr: 3100000000000,
+          electricity_expense_inr: 18000000000,
+          electricity_expense_prev_inr: 17200000000,
+          legal_expense_inr: 5200000000,
+          legal_expense_prev_inr: 5100000000,
+        },
+        bank: {
+          inflow_inr: 1950000000000,
+          outflow_inr: 1870000000000,
+          avg_balance_inr: 65000000000,
+          min_balance_inr: 51000000000,
+          bounce_count: 0,
+          debt_service_inr: 13000000000,
+          pass_through_ratio: 0.84,
+          round_trip_pairs: 2,
+          round_trip_ratio: 0.08,
+        },
+      };
+    }
+    if (company === 'Zomato Ltd') {
+      return {
+        gst: { turnover_inr: 36000000000, gstr_2a_itc_inr: 420000000, gstr_3b_itc_inr: 520000000 },
+        itr: {
+          profit_inr: 200000000,
+          revenue_inr: 120000000000,
+          revenue_prev_inr: 80000000000,
+          electricity_expense_inr: 210000000,
+          electricity_expense_prev_inr: 205000000,
+          legal_expense_inr: 1400000000,
+          legal_expense_prev_inr: 900000000,
+        },
+        bank: {
+          inflow_inr: 52000000000,
+          outflow_inr: 53500000000,
+          avg_balance_inr: 3800000000,
+          min_balance_inr: 420000000,
+          bounce_count: 4,
+          debt_service_inr: 800000000,
+          pass_through_ratio: 1.03,
+          round_trip_pairs: 18,
+          round_trip_ratio: 0.62,
+        },
+      };
+    }
+    if (company === 'InterGlobe Aviation') {
+      return {
+        gst: { turnover_inr: 980000000000, gstr_2a_itc_inr: 3800000000, gstr_3b_itc_inr: 4120000000 },
+        itr: {
+          profit_inr: 24000000000,
+          revenue_inr: 410000000000,
+          revenue_prev_inr: 360000000000,
+          electricity_expense_inr: 5200000000,
+          electricity_expense_prev_inr: 4800000000,
+          legal_expense_inr: 1200000000,
+          legal_expense_prev_inr: 900000000,
+        },
+        bank: {
+          inflow_inr: 690000000000,
+          outflow_inr: 672000000000,
+          avg_balance_inr: 21000000000,
+          min_balance_inr: 5400000000,
+          bounce_count: 1,
+          debt_service_inr: 9000000000,
+          pass_through_ratio: 0.94,
+          round_trip_pairs: 6,
+          round_trip_ratio: 0.28,
+        },
+      };
+    }
+    return { gst: {}, itr: {}, bank: {} };
+  }
+
+  function legacySentimentFixture(company) {
+    if (company === 'Zomato Ltd') {
+      return {
+        score: 81.4,
+        label: 'Elevated',
+        signals: ['material uncertainty', 'working capital', 'litigation', 'change in accounting policy'],
+        trend: [
+          { period: 'FY2023', score: 46.2, label: 'Stable' },
+          { period: 'FY2024', score: 61.7, label: 'Watchlist' },
+          { period: 'FY2025', score: 81.4, label: 'Elevated' },
+        ],
+      };
+    }
+    if (company === 'Adani Enterprises') {
+      return {
+        score: 62.8,
+        label: 'Watchlist',
+        signals: ['contingent liability', 'dispute', 'working capital'],
+        trend: [
+          { period: 'FY2023', score: 49.5, label: 'Stable' },
+          { period: 'FY2024', score: 58.1, label: 'Watchlist' },
+          { period: 'FY2025', score: 62.8, label: 'Watchlist' },
+        ],
+      };
+    }
+    return { score: 41.2, label: 'Stable', signals: [], trend: [] };
+  }
+
+  function legacyAlerts(company, extracted) {
+    const ex = extracted || {};
+    const v = computeMismatchVariancePct(ex);
+    const r = computeGSTReconciliationVariancePct(ex);
+    const alerts = [];
+    if (v != null && v >= 25) alerts.push('High GST–Bank inflow mismatch detected.');
+    else if (v != null && v >= 12) alerts.push('Moderate GST–Bank inflow mismatch detected.');
+    if (r != null && r >= 15) alerts.push(`GSTR-2A vs GSTR-3B ITC mismatch: ${r}% variance (reconciliation risk).`);
+    else if (r != null && r >= 7) alerts.push(`Moderate GSTR-2A vs GSTR-3B ITC variance: ${r}% (review timing/eligibility).`);
+
+    if (company === 'Zomato Ltd') {
+      alerts.push('Truth-Seeker triangulation: revenue growth not reflected in utilities (paper revenue risk).');
+      alerts.push('Circular trading risk signal: high pass-through with mirrored flows (review counterparties).');
+      alerts.push('EWS sentiment: Elevated (defensive tone / distress markers).');
+    }
+    if (company === 'InterGlobe Aviation') {
+      alerts.push('Macro sensitivity: fuel + interest rate shocks materially impact DSCR/ICR (run Digital Twin).');
+    }
+    return alerts;
+  }
+
+  function legacyAiBundle({ company, sector }) {
+    const extracted = legacyExtractedFixture(company);
+    const research = legacyResearchFixture(company, sector);
+    const sentiment = legacySentimentFixture(company);
+    return {
+      risk: { status: 'Moderate', score: 52.4 }, // UI recomputes in view-case; keep report sensible
+      extracted,
+      research,
+      ews: { sentiment },
+      audit: { items: buildLegacyAuditItems({ extracted, research, sentiment }) },
+      alerts: legacyAlerts(company, extracted).concat((research?.governance?.flags || []).slice(0, 2).map(f => `Governance network: ${f}`)),
+      credit_summary: 'Skeptical digital auditor summary generated from GST↔Bank triangulation, governance graph, and EWS signals.',
+    };
+  }
+
   const legacyRecords = {
-    '#1290': { id: '#1290', company: 'Reliance Industries Ltd', promoters: 'Mukesh Ambani & Family', sector: 'Oil & Gas', grade: 'A+', riskClass: 'risk-a', date: 'Feb 20, 2026', status: 'Approved', metrics: { ebitda: '150000', debtService: '25000', facility: '50000', dscr: '6.00', leverage: '0.80' } },
-    '#1289': { id: '#1289', company: 'Adani Enterprises', promoters: 'Gautam Adani & Family', sector: 'Infrastructure', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 19, 2026', status: 'Pending', metrics: { ebitda: '85000', debtService: '18000', facility: '30000', dscr: '4.72', leverage: '1.20' } },
-    '#1288': { id: '#1288', company: 'Tata Motors', promoters: 'Tata Sons', sector: 'Automotive', grade: 'A', riskClass: 'risk-a', date: 'Feb 18, 2026', status: 'Approved', metrics: { ebitda: '42000', debtService: '12000', facility: '15000', dscr: '3.50', leverage: '0.95' } },
-    '#1287': { id: '#1287', company: 'Zomato Ltd', promoters: 'Deepinder Goyal & Public', sector: 'Tech / Food', grade: 'BB', riskClass: 'risk-bb', date: 'Feb 15, 2026', status: 'Rejected', metrics: { ebitda: '-120', debtService: '500', facility: '200', dscr: '0.00', leverage: '4.50' } },
-    '#1286': { id: '#1286', company: 'InterGlobe Aviation', promoters: 'Rahul Bhatia & R. Gangwal', sector: 'Aviation', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 12, 2026', status: 'Approved', metrics: { ebitda: '12500', debtService: '4500', facility: '8000', dscr: '2.78', leverage: '2.10' } }
+    '#1290': { id: '#1290', company: 'Reliance Industries Ltd', promoters: 'Mukesh Ambani & Family', sector: 'Oil & Gas', grade: 'A+', riskClass: 'risk-a', date: 'Feb 20, 2026', status: 'Approved', metrics: { ebitda: '150000', debtService: '25000', facility: '50000', dscr: '6.00', leverage: '0.80' }, ai: legacyAiBundle({ company: 'Reliance Industries Ltd', sector: 'Oil & Gas' }) },
+    '#1289': { id: '#1289', company: 'Adani Enterprises', promoters: 'Gautam Adani & Family', sector: 'Infrastructure', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 19, 2026', status: 'Pending', metrics: { ebitda: '85000', debtService: '18000', facility: '30000', dscr: '4.72', leverage: '1.20' }, ai: legacyAiBundle({ company: 'Adani Enterprises', sector: 'Infrastructure' }) },
+    '#1288': { id: '#1288', company: 'Tata Motors', promoters: 'Tata Sons', sector: 'Automotive', grade: 'A', riskClass: 'risk-a', date: 'Feb 18, 2026', status: 'Approved', metrics: { ebitda: '42000', debtService: '12000', facility: '15000', dscr: '3.50', leverage: '0.95' }, ai: legacyAiBundle({ company: 'Tata Motors', sector: 'Automotive' }) },
+    '#1287': { id: '#1287', company: 'Zomato Ltd', promoters: 'Deepinder Goyal & Public', sector: 'Tech / Food', grade: 'BB', riskClass: 'risk-bb', date: 'Feb 15, 2026', status: 'Rejected', metrics: { ebitda: '-120', debtService: '500', facility: '200', dscr: '0.00', leverage: '4.50' }, ai: legacyAiBundle({ company: 'Zomato Ltd', sector: 'Tech / Food' }) },
+    '#1286': { id: '#1286', company: 'InterGlobe Aviation', promoters: 'Rahul Bhatia & R. Gangwal', sector: 'Aviation', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 12, 2026', status: 'Approved', metrics: { ebitda: '12500', debtService: '4500', facility: '8000', dscr: '2.78', leverage: '2.10' }, ai: legacyAiBundle({ company: 'InterGlobe Aviation', sector: 'Aviation' }) }
   };
 
   // Detailed View Logic
