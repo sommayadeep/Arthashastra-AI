@@ -695,7 +695,10 @@
                     var companyEl = document.getElementById('viewCompany');
                     if (!companyEl) return;
                     var t = (companyEl.textContent || '').trim();
-                    if (t && t !== '--' && t !== 'Loading Entity...') return; // already populated
+                    var caseIdEl = document.getElementById('viewCaseId');
+                    var caseT = caseIdEl ? String(caseIdEl.textContent || '') : '';
+                    var looksPopulated = t && t !== '--' && t !== 'Loading Entity...' && caseT.indexOf('#----') === -1;
+                    if (looksPopulated) return; // already populated by main engine
 
                     var id = normalizeId(getQueryParam('id') || '');
                     if (!id) id = normalizeId(window.location.hash || '');
