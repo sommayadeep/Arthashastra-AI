@@ -147,9 +147,7 @@
                 </div>
                 <p>Upload GST / ITR / Bank Statement files to auto-extract structured data, compute ratios, detect
                     anomalies (including <strong>GSTR-2A vs 3B reconciliation</strong> and <strong>circular trading</strong>
-                    signals), enrich with <strong>MCA + e-Courts</strong> research, and return a risk status + AI credit
-                    summary (used by the existing dashboard UI). Also returns <strong>EWS sentiment</strong> and
-                    <strong>Audit-Link</strong> traceability.</p>
+                    signals), and return a risk status + AI credit summary (used by the existing dashboard UI).</p>
 
                 <table class="param-table">
                     <thead>
@@ -176,29 +174,9 @@
                             <td>Bank statement (.csv).</td>
                         </tr>
                         <tr>
-                            <td><code>qual_docs</code></td>
-                            <td>File</td>
-                            <td>Board minutes / rating notes text (.txt) for EWS sentiment heatmap.</td>
-                        </tr>
-                        <tr>
                             <td><code>adjust</code></td>
                             <td>Number</td>
                             <td>Officer risk adjustment (−10 to +10).</td>
-                        </tr>
-                        <tr>
-                            <td><code>company</code></td>
-                            <td>String</td>
-                            <td>Legal entity name (used for promoter/litigation research).</td>
-                        </tr>
-                        <tr>
-                            <td><code>promoters</code></td>
-                            <td>String</td>
-                            <td>Promoters/directors (used for promoter history checks).</td>
-                        </tr>
-                        <tr>
-                            <td><code>sector</code></td>
-                            <td>String</td>
-                            <td>Industry/sector tag (used for sector headwinds context).</td>
                         </tr>
                         <tr>
                             <td><code>primary_insights</code></td>
@@ -212,13 +190,7 @@
                     {<br>
                     &nbsp;&nbsp;"intelligence": {<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;"risk": { "status": "Moderate", "score": 52.4 },<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;"alerts": ["High GST–Bank inflow mismatch detected.", "GSTR-2A vs GSTR-3B ITC mismatch: 18% variance (possible ITC over-claim / synthetic invoicing; circular-trading vector).", "MCA filings: 1 active charge(s) detected (State Bank of India).", "e-Courts: 1 ongoing litigation matter(s) found (review case status & exposure)."],<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;"research": {<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"mca": { "cin": "U....", "charges": { "active_count": 1 } },<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ecourts": { "ongoing_count": 1 }<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;},<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;"ews": { "sentiment": { "label": "Watchlist", "score": 62.1 } },<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;"audit": { "items": [{ "id": "gst_recon_itc", "title": "GSTR-2A vs GSTR-3B reconciliation (ITC)" }] },<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"alerts": ["High GST–Bank inflow mismatch detected.", "GSTR-2A vs GSTR-3B mismatch detected (reconciliation risk)."],<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;"credit_summary": "..."<br>
                     &nbsp;&nbsp;}<br>
                     }
