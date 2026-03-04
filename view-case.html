@@ -576,7 +576,194 @@
             <p>Architected with Civilizational Wisdom</p>
         </div>
     </footer>
-    <script src="script.js?v=26"></script>
+    <script src="script.js?v=27"></script>
+    <script>
+        (function () {
+            function safeText(id, value) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = value;
+            }
+
+            function safeHtml(id, html) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.innerHTML = html;
+            }
+
+            function getQueryParam(name) {
+                var search = window.location.search || '';
+                if (search.charAt(0) === '?') search = search.slice(1);
+                if (!search) return '';
+                var parts = search.split('&');
+                for (var i = 0; i < parts.length; i++) {
+                    var seg = parts[i];
+                    if (!seg) continue;
+                    var eq = seg.indexOf('=');
+                    var k = eq >= 0 ? seg.slice(0, eq) : seg;
+                    var v = eq >= 0 ? seg.slice(eq + 1) : '';
+                    try { k = decodeURIComponent(k); } catch (e) { }
+                    if (k === name) {
+                        try { v = decodeURIComponent(v); } catch (e2) { }
+                        return v;
+                    }
+                }
+                return '';
+            }
+
+            function normalizeId(raw) {
+                var id = (raw || '').trim();
+                if (!id) return '';
+                if (id.indexOf('%23') >= 0) { try { id = decodeURIComponent(id); } catch (e) { } }
+                if (id.charAt(0) !== '#') id = '#' + id.replace(/^#/, '');
+                return id;
+            }
+
+            function formatINR(n) {
+                var num = Number(n);
+                if (!isFinite(num)) return '--';
+                try {
+                    return '₹ ' + num.toLocaleString('en-IN') + ' Cr';
+                } catch (e) {
+                    return '₹ ' + num + ' Cr';
+                }
+            }
+
+            function readArchive() {
+                try {
+                    var raw = window.localStorage.getItem('mauryan_archive');
+                    if (!raw) return [];
+                    var parsed = JSON.parse(raw);
+                    return (parsed && parsed.length) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function renderGovFallback(record) {
+                var graph = document.getElementById('govGraph');
+                var flags = document.getElementById('govFlags');
+                var src = document.getElementById('govSources');
+                if (!graph && !flags && !src) return;
+
+                var research = record && record.ai && record.ai.research ? record.ai.research : null;
+                var nodes = research && research.network && research.network.nodes ? research.network.nodes : [];
+                var govFlags = research && research.governance && research.governance.flags ? research.governance.flags : [];
+
+                if (graph) {
+                    if (!nodes || !nodes.length) {
+                        graph.textContent = 'No network loaded.';
+                    } else {
+                        var chips = [];
+                        for (var i = 0; i < nodes.length; i++) {
+                            var n = nodes[i] || {};
+                            var label = (n.label || '').trim();
+                            if (!label) continue;
+                            var type = (n.type || 'node');
+                            var bg = type === 'company' ? 'rgba(26,37,64,0.10)' :
+                                type === 'director' ? 'rgba(185,149,59,0.14)' :
+                                    type === 'auditor' ? 'rgba(139,41,66,0.12)' : 'rgba(158,124,47,0.12)';
+                            var border = type === 'company' ? 'rgba(26,37,64,0.35)' :
+                                type === 'director' ? 'rgba(185,149,59,0.45)' :
+                                    type === 'auditor' ? 'rgba(139,41,66,0.40)' : 'rgba(158,124,47,0.40)';
+                            chips.push('<span style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid ' + border + '; background:' + bg + '; font-weight:900; color: var(--heading-dark);">' + (type.toUpperCase()) + ': ' + label + '</span>');
+                        }
+                        graph.innerHTML = '<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">' + chips.join('') + '</div>';
+                    }
+                }
+
+                if (flags) {
+                    if (!govFlags || !govFlags.length) {
+                        flags.innerHTML = '<li style="color: var(--text-secondary); font-weight: 700;">No governance red-flags detected.</li>';
+                    } else {
+                        var li = [];
+                        for (var j = 0; j < govFlags.length && j < 6; j++) {
+                            li.push('<li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6); font-weight:900;">' + govFlags[j] + '</li>');
+                        }
+                        flags.innerHTML = li.join('');
+                    }
+                }
+
+                if (src) {
+                    var s = (research && research.sources && research.sources.mca) ? research.sources.mca : 'MCA filings (directors / auditor / related entities)';
+                    src.textContent = 'Sources: ' + s;
+                }
+            }
+
+            function boot() {
+                try {
+                    var companyEl = document.getElementById('viewCompany');
+                    if (!companyEl) return;
+                    var t = (companyEl.textContent || '').trim();
+                    if (t && t !== '--' && t !== 'Loading Entity...') return; // already populated
+
+                    var id = normalizeId(getQueryParam('id') || '');
+                    if (!id) id = normalizeId(window.location.hash || '');
+                    if (!id) {
+                        try { id = normalizeId(window.sessionStorage.getItem('arthashastra_last_case_id') || ''); } catch (e0) { }
+                    }
+                    if (!id) id = '#1290';
+
+                    var archive = readArchive();
+                    var record = null;
+                    for (var i = 0; i < archive.length; i++) {
+                        if (archive[i] && archive[i].id === id) { record = archive[i]; break; }
+                    }
+
+                    // Minimal legacy fixtures (offline)
+                    var legacy = {
+                        '#1290': { id: '#1290', company: 'Reliance Industries Ltd', promoters: 'Mukesh Ambani & Family', sector: 'Oil & Gas', grade: 'A+', riskClass: 'risk-a', date: 'Feb 20, 2026', status: 'Approved', metrics: { ebitda: '150000', debtService: '25000', facility: '50000', approvedAmount: '48000', dscr: '6.00', leverage: '0.80' }, ai: { research: { sources: { mca: 'MCA filings (fixtures)' }, governance: { flags: ['Auditor overlap detected across related entities (fixture).', 'Director sits on multiple boards (monitor governance concentration).'] }, network: { nodes: [{ id: 'c', label: 'Reliance Industries Ltd', type: 'company' }, { id: 'd1', label: 'Director A', type: 'director' }, { id: 'd2', label: 'Director B', type: 'director' }, { id: 'a1', label: 'Statutory Auditor', type: 'auditor' }, { id: 'r1', label: 'Related Entity 1', type: 'related' }], edges: [] } } } } },
+                        '#1289': { id: '#1289', company: 'Adani Enterprises', promoters: 'Gautam Adani & Family', sector: 'Infrastructure', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 19, 2026', status: 'Pending', metrics: { ebitda: '85000', debtService: '18000', facility: '30000', approvedAmount: '24000', dscr: '4.72', leverage: '1.20' }, ai: { research: { sources: { mca: 'MCA filings (fixtures)' }, governance: { flags: ['Related party concentration flagged (fixture).'] }, network: { nodes: [{ id: 'c', label: 'Adani Enterprises', type: 'company' }, { id: 'd1', label: 'Director A', type: 'director' }, { id: 'a1', label: 'Statutory Auditor', type: 'auditor' }, { id: 'r1', label: 'Sister Concern', type: 'related' }], edges: [] } } } } },
+                        '#1288': { id: '#1288', company: 'Tata Motors', promoters: 'Tata Sons', sector: 'Automotive', grade: 'A', riskClass: 'risk-a', date: 'Feb 18, 2026', status: 'Approved', metrics: { ebitda: '42000', debtService: '12000', facility: '15000', approvedAmount: '12000', dscr: '3.50', leverage: '0.95' }, ai: { research: { sources: { mca: 'MCA filings (fixtures)' }, governance: { flags: [] }, network: { nodes: [{ id: 'c', label: 'Tata Motors', type: 'company' }, { id: 'd1', label: 'Director A', type: 'director' }, { id: 'a1', label: 'Statutory Auditor', type: 'auditor' }], edges: [] } } } } },
+                        '#1287': { id: '#1287', company: 'Zomato Ltd', promoters: 'Deepinder Goyal & Public', sector: 'Tech / Food', grade: 'BB', riskClass: 'risk-bb', date: 'Feb 15, 2026', status: 'Rejected', metrics: { ebitda: '-120', debtService: '500', facility: '200', approvedAmount: '0', dscr: '0.00', leverage: '4.50' }, ai: { research: { sources: { mca: 'MCA filings (fixtures)' }, governance: { flags: ['Board independence watch: rapid director churn (fixture).'] }, network: { nodes: [{ id: 'c', label: 'Zomato Ltd', type: 'company' }, { id: 'd1', label: 'Director A', type: 'director' }, { id: 'r1', label: 'Key Vendor', type: 'related' }], edges: [] } } } } },
+                        '#1286': { id: '#1286', company: 'InterGlobe Aviation', promoters: 'Rahul Bhatia & R. Gangwal', sector: 'Aviation', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 12, 2026', status: 'Approved', metrics: { ebitda: '12500', debtService: '4500', facility: '8000', approvedAmount: '6400', dscr: '2.78', leverage: '2.10' }, ai: { research: { sources: { mca: 'MCA filings (fixtures)' }, governance: { flags: [] }, network: { nodes: [{ id: 'c', label: 'InterGlobe Aviation', type: 'company' }, { id: 'd1', label: 'Director A', type: 'director' }, { id: 'a1', label: 'Statutory Auditor', type: 'auditor' }], edges: [] } } } } }
+                    };
+
+                    if (!record) record = legacy[id] || legacy['#1290'];
+
+                    // Populate core fields
+                    safeText('viewCompany', record.company || '--');
+                    safeText('viewCompanySmall', record.company || '--');
+                    safeText('viewCaseId', 'CASE ID: ' + (record.id || '--'));
+                    safeText('viewDate', 'DATE: ' + (record.date || '--'));
+                    safeText('viewStatus', 'STATUS: ' + String(record.status || '--').toUpperCase());
+
+                    var badge = document.getElementById('viewGradeBadge');
+                    if (badge) {
+                        badge.textContent = record.grade || '--';
+                        badge.className = 'risk-tag ' + (record.riskClass || '');
+                    }
+
+                    safeText('viewPromoters', record.promoters || '--');
+                    safeText('viewSector', record.sector || '--');
+                    safeText('viewPrimaryInsights', (record.primary_insights || record.primaryInsights || '—'));
+
+                    var m = record.metrics || {};
+                    safeText('viewEbitda', formatINR(m.ebitda));
+                    safeText('viewDebt', formatINR(m.debtService));
+                    safeText('viewFacility', formatINR(m.facility));
+                    safeText('viewApproved', m.approvedAmount ? formatINR(m.approvedAmount) : 'N/A');
+                    safeText('viewDscr', (m.dscr != null ? (m.dscr + 'x') : '--'));
+                    safeText('viewLeverage', (m.leverage != null ? (m.leverage + 'x') : '--'));
+
+                    // Governance fallback
+                    renderGovFallback(record);
+
+                    // Alerts fallback
+                    safeText('viewAlertsCount', '3 Alerts');
+                    safeHtml('viewAlertsList', '<li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6); font-weight:900;">GST↔Bank mismatch (fixture)</li><li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6); font-weight:900;">GSTR‑2A ↔ 3B variance (fixture)</li><li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6); font-weight:900;">Truth‑Seeker triangulation flag (fixture)</li>');
+
+                    // Audit links fallback
+                    safeHtml('auditLinksList', '<li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">Evidence: GST reconciliation inputs</li><li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">Evidence: Bank inflow aggregates</li><li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">Evidence: MCA governance graph nodes</li>');
+                } catch (e) {
+                    // silent fail-safe
+                }
+            }
+
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+            else boot();
+        })();
+    </script>
 </body>
 
 </html>
