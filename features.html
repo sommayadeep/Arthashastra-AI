@@ -41,12 +41,17 @@
                     <h3>1. Data Ingestion Engine</h3>
                     <p>Our multi-modal ingestion system handles unstructured and structured financial data.</p>
                     <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
-                        <li><strong>PDF Parsing:</strong> OCR and text extraction from Annual Reports and Sanction
-                            Letters.</li>
-                        <li><strong>GST Extraction:</strong> Automated parsing of GSTR-3B and GSTR-1 returns.</li>
+                        <li><strong>Messy Indian PDFs:</strong> Layout-aware OCR and text extraction from scanned Annual
+                            Reports, sanction letters, and legal notices.</li>
+                        <li><strong>GST Extraction:</strong> Automated parsing of GSTR-3B / GSTR-1, with
+                            <strong>GSTR-2A vs 3B reconciliation</strong> flags.</li>
                         <li><strong>Bank Normalization:</strong> Standardizing transaction descriptions across different
                             bank formats.</li>
                         <li><strong>Legal Scan:</strong> Identifying key clauses in legal notices and contracts.</li>
+                        <li><strong>Forensic Cross-Checks:</strong> GST ↔ bank triangulation to surface circular trading
+                            and revenue inflation signals.</li>
+                        <li><strong>Databricks Lakehouse:</strong> Delta ingestion layer for audit-grade
+                            lineage, replay, and analytics at scale.</li>
                     </ul>
                 </div>
 
@@ -54,11 +59,15 @@
                     <h3>2. Secondary Research Agent</h3>
                     <p>An autonomous agent that scans the web for external risks and intelligence.</p>
                     <ul style="margin-top: 15px; color: var(--sage); line-height: 1.6;">
-                        <li><strong>Promoter Checks:</strong> Background verification and reputation analysis.</li>
-                        <li><strong>Litigation Flags:</strong> Scanning court records and news for disputes.</li>
+                        <li><strong>Promoter Checks:</strong> Background verification with MCA filings (directorships,
+                            charges, and compliance signals).</li>
+                        <li><strong>Litigation Flags:</strong> Litigation history from the e-Courts portal / NCLT
+                            orders, plus news scanning.</li>
                         <li><strong>Media Risk:</strong> Sentiment analysis of news articles related to the entity.</li>
-                        <li><strong>Sector Intelligence:</strong> Macro-economic trends affecting the borrower's
-                            industry.</li>
+                        <li><strong>Sector Intelligence:</strong> Sector-specific headwinds (including RBI
+                            regulations/circulars) affecting the borrower.</li>
+                        <li><strong>Primary Insights:</strong> Credit officer site-visit notes captured as qualitative
+                            inputs for the CAM.</li>
                     </ul>
                 </div>
 

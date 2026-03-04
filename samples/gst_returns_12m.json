@@ -1,4 +1,6 @@
 {
   "months": 12,
-  "turnover_inr": 125000000
+  "turnover_inr": 125000000,
+  "gstr_2a_itc_inr": 9000000,
+  "gstr_3b_itc_inr": 11500000
 }

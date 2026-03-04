@@ -45,6 +45,7 @@ def _analyze_from_files(files, form):
         "company": form.get("company") or None,
         "promoters": form.get("promoters") or None,
         "sector": form.get("sector") or None,
+        "primary_insights": form.get("primary_insights") or None,
     }
     return {
         "status": "success",
@@ -169,7 +170,7 @@ except Exception:
                         if getattr(item, "file", None) is not None:
                             files[k] = _F(item)
 
-                fields = {key: form.getfirst(key) for key in ("adjust", "company", "promoters", "sector")}
+                fields = {key: form.getfirst(key) for key in ("adjust", "company", "promoters", "sector", "primary_insights")}
                 return _json_response(self, _analyze_from_files(files, fields), 200)
             except Exception as e:
                 traceback.print_exc()

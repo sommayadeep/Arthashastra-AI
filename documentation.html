@@ -120,6 +120,9 @@
                         <h2>Risk Scoring Architecture</h2>
                         <p>The core of Arthashastra AI is a deterministic scoring engine that evaluates financial
                             coefficients derived from Annual Reports, GST returns, and Bank Statements.</p>
+                        <p>For India-specific underwriting, the engine explicitly performs GST reconciliations such as
+                            <strong>GSTR-2A vs GSTR-3B</strong> variance checks, and triangulates <strong>GST ↔ ITR ↔ Bank</strong>
+                            signals to surface revenue inflation and circular trading patterns.</p>
                         <div class="code-block">
                             // Baseline Institutional Calculation<br>
                             Score = (DSCR * 0.4) + (Leverage * 0.3) + (Condition Adj. * 0.3)
@@ -134,6 +137,9 @@
                         <p>The Dharma Ledger serves as your cryptographically secured vault of institutional history.
                             Every assessment generated is recorded with a unique Mauryan Grade (A+, BBB, etc.) and
                             archived for audit-ready compliance.</p>
+                        <p>For enterprise deployments, the same extracted tables and lineage can be persisted to a
+                            customer-controlled <strong>Databricks Lakehouse (Delta)</strong> to enable governance, replay,
+                            and large-scale analytics without compromising auditability.</p>
                         <p>Administrators can use the Intelligence HUD to filter through decades of historical credit
                             decisions, identifying patterns in sector-specific defaults or growth trajectories.</p>
                     </section>
@@ -142,6 +148,11 @@
                         <h2>AI Underwriting Meta</h2>
                         <p>Our AI operates on an Explainable AI (XAI) framework. You can inspect the exact metrics and
                             reasoning the model used to arrive at a risk grade.</p>
+                        <p>The Digital Credit Manager research layer enriches underwriting with external intelligence
+                            such as <strong>MCA filings</strong>, <strong>e-Courts litigation history</strong>, and
+                            regulatory headwinds (e.g., RBI circulars). Credit officers can also add qualitative
+                            <strong>Primary Insights</strong> from site visits (e.g., operating capacity observations) to
+                            strengthen committee readiness.</p>
                         <p>Unlike black-box models, Arthashastra AI provides an immutable audit trail, pinpointing
                             exactly how Days Past Due (DPD) or high utilization ratios influenced the final Credit
                             Appraisal Memorandum.</p>

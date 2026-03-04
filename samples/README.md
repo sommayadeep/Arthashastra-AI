@@ -10,6 +10,10 @@ Use these files to validate the full pipeline (Auto-Extract → Risk/Alerts → 
 - `samples/itr_3y.json`
 - `samples/bank_statement_12m.csv`
 
+### What this demo shows
+- `gst_returns_12m.json` includes GSTR-2A vs GSTR-3B ITC fields to trigger reconciliation checks.
+- `bank_statement_12m.csv` is constructed to demonstrate circular trading heuristics (high pass-through + mirrored flows).
+
 ## Quick run
 1. Start backend: `python3 app.py` (listens on `http://127.0.0.1:5050`)
 2. Start frontend: `start_localhost.command` (typically `http://localhost:8080`)

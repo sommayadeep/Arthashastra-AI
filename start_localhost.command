@@ -4,6 +4,47 @@ set -euo pipefail
 # Always run from the directory where this script resides
 cd "$(dirname "$0")"
 
+# Locate Python
+PYBIN="python3"
+if ! command -v python3 >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1; then
+    PYBIN="python"
+  else
+    echo "Python not found. Install from https://www.python.org/downloads/ and re-run this script."
+    exit 1
+  fi
+fi
+
+# Stop any previously started backend recorded in .backend.pid
+if [ -f .backend.pid ]; then
+  OLD_BACKEND_PID=$(cat .backend.pid || true)
+  if [ -n "$OLD_BACKEND_PID" ] && ps -p "$OLD_BACKEND_PID" >/dev/null 2>&1; then
+    echo "Stopping previous backend (PID $OLD_BACKEND_PID)"
+    kill "$OLD_BACKEND_PID" >/dev/null 2>&1 || true
+    sleep 1
+  fi
+  rm -f .backend.pid
+fi
+
+# Start AI backend (required for Auto-Extract)
+BACKEND_PORT=5050
+if lsof -i tcp:$BACKEND_PORT -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Backend port $BACKEND_PORT is already in use. Skipping backend start."
+  echo "If Auto-Extract fails, stop the process on port $BACKEND_PORT or run: $PYBIN app.py"
+else
+  echo "Starting AI backend on http://127.0.0.1:$BACKEND_PORT ..."
+  nohup "$PYBIN" app.py > .backend.log 2>&1 &
+  BACKEND_PID=$!
+  echo $BACKEND_PID > .backend.pid
+  sleep 1
+  if ps -p "$BACKEND_PID" >/dev/null 2>&1; then
+    echo "Backend running with PID $BACKEND_PID"
+    echo "Backend log file: $(pwd)/.backend.log"
+  else
+    echo "Backend failed to start. See .backend.log for details."
+  fi
+fi
+
 # Pick an available port from a preferred list, or fall back to a random high port
 ports=(8080 8000 5500 3000 5173)
 PORT=""
@@ -36,17 +77,6 @@ if [ -f .server.pid ]; then
     sleep 1
   fi
   rm -f .server.pid
-fi
-
-# Locate Python
-PYBIN="python3"
-if ! command -v python3 >/dev/null 2>&1; then
-  if command -v python >/dev/null 2>&1; then
-    PYBIN="python"
-  else
-    echo "Python not found. Install from https://www.python.org/downloads/ and re-run this script."
-    exit 1
-  fi
 fi
 
 # Start server in background and log output

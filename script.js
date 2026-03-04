@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     candidates.push('/api/case/analyze');
     candidates.push('http://localhost:5050/api/case/analyze');
     candidates.push('http://127.0.0.1:5050/api/case/analyze');
+    // Common Flask dev default
+    candidates.push('http://localhost:5000/api/case/analyze');
+    candidates.push('http://127.0.0.1:5000/api/case/analyze');
 
     let lastErr = null;
     let lastUrl = null;
@@ -509,6 +512,10 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
   <div class="card">
+    <div class="k">Primary Insights (Site Visit)</div>
+    <div class="muted" style="margin-top:8px; white-space: pre-wrap">${escapeHtml(c?.primary_insights || c?.primaryInsights || '—')}</div>
+  </div>
+  <div class="card">
     <div class="k">AI Credit Summary</div>
     <div class="muted" style="margin-top:8px">${escapeHtml(ai.credit_summary || '—')}</div>
   </div>
@@ -574,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
       company: q('#company')?.value || window.currentCaseMetrics?.company || 'Entity',
       promoters: q('#promoters')?.value || window.currentCaseMetrics?.promoters || '—',
       sector: q('#sector')?.value || window.currentCaseMetrics?.sector || '—',
+      primary_insights: q('#primary_insights')?.value || window.currentCaseMetrics?.primary_insights || window.currentCaseMetrics?.primaryInsights || '—',
       status: 'Preview',
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       ai: (window.latestAI || window.currentCaseMetrics?.ai || null),
@@ -786,6 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (q('#company')?.value) formData.append('company', q('#company').value);
         if (q('#promoters')?.value) formData.append('promoters', q('#promoters').value);
         if (q('#sector')?.value) formData.append('sector', q('#sector').value);
+        if (q('#primary_insights')?.value) formData.append('primary_insights', q('#primary_insights').value);
         if (adjust?.value) formData.append('adjust', adjust.value);
 
         let analysis = null;
@@ -793,7 +802,15 @@ document.addEventListener('DOMContentLoaded', () => {
           analysis = await postCaseAnalyze(formData);
         } catch (e) {
           const tried = e?._arthashastra_last_url ? `\nTried: ${e._arthashastra_last_url}` : '';
-          alert(`⚠️ AI extraction failed.\n\nError: ${e?.message || e}${tried}`);
+          alert(
+            `⚠️ AI extraction failed.\n\n` +
+            `Error: ${e?.message || e}${tried}\n\n` +
+            `Fix (Localhost):\n` +
+            `1) Start backend: python3 app.py (http://127.0.0.1:5050)\n` +
+            `2) Keep this page open and retry.\n\n` +
+            `Fix (Remote backend):\n` +
+            `localStorage.setItem('arthashastra_backend_base', 'https://<your-backend-host>')`
+          );
         }
 
         await minDelay;
@@ -849,6 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
         company: q('#company').value || 'Entity Name',
         promoters: q('#promoters').value || 'N/A',
         sector: q('#sector').value || 'N/A',
+        primaryInsights: q('#primary_insights')?.value || '',
         adjust: parseInt(q('#adjust').value) || 0,
         docs: {
           gst: (q('#gst_docs')?.files || []).length > 0,
@@ -910,13 +928,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 50px;">
           <div style="background: var(--ivory-card); padding: 35px; border-radius: 4px; border: 1px solid var(--border-gold); box-shadow: var(--shadow-ancient);">
-            <h4 style="margin-bottom: 25px; font-size: 1.1rem; color: var(--imperial-indigo); border-bottom: 1px solid var(--antique-gold); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Executive Summary</h4>
-            <ul style="list-style: none;">
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Promoter(s)</span> <strong id="cam-promoters"></strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Sector</span> <strong id="cam-sector"></strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Documentation Coverage</span> <strong style="color: var(--imperial-indigo); font-size: 1.1rem;">${coveragePercent}%</strong></li>
-              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;">
-                <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Risk Status</span>
+	            <h4 style="margin-bottom: 25px; font-size: 1.1rem; color: var(--imperial-indigo); border-bottom: 1px solid var(--antique-gold); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Executive Summary</h4>
+	            <ul style="list-style: none;">
+	              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Promoter(s)</span> <strong id="cam-promoters"></strong></li>
+	              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Sector</span> <strong id="cam-sector"></strong></li>
+	              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;">
+	                <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Primary Insights (Site Visit)</span>
+	                <strong id="cam-primary-insights" style="white-space: pre-wrap; display:block; color: var(--heading-dark);">—</strong>
+	              </li>
+	              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Documentation Coverage</span> <strong style="color: var(--imperial-indigo); font-size: 1.1rem;">${coveragePercent}%</strong></li>
+	              <li style="margin-bottom: 18px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 4px;">
+	                <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Risk Status</span>
                 <strong id="cam-risk-status" style="color: var(--imperial-indigo);">--</strong>
                 <span id="cam-risk-score" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 800;"></span>
                 <span id="cam-pd-line" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 900;"></span>
@@ -974,12 +996,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (q('#cam-company-name')) q('#cam-company-name').textContent = data.company;
       if (q('#cam-promoters')) q('#cam-promoters').textContent = data.promoters;
       if (q('#cam-sector')) q('#cam-sector').textContent = data.sector;
+      if (q('#cam-primary-insights')) q('#cam-primary-insights').textContent = data.primaryInsights ? data.primaryInsights : '—';
 
       // Store globally for archival with concise details
       window.currentCaseMetrics = {
         company: data.company,
         promoters: data.promoters,
         sector: data.sector,
+        primaryInsights: data.primaryInsights || '',
         grade: grade,
         riskClass: riskClass,
         docs: data.docs,
@@ -1142,10 +1166,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const debtInput = q('#debtService');
     const facilityInput = q('#facility');
     const networthInput = q('#networth');
+    const primaryInsightsInput = q('#primary_insights');
 
     const company = (companyInput && companyInput.value) ? companyInput.value : (cached.company || 'Unknown Entity');
     const promoters = (promotersInput && promotersInput.value) ? promotersInput.value : (cached.promoters || 'N/A');
     const sector = (sectorInput && sectorInput.value) ? sectorInput.value : (cached.sector || 'General');
+    const primaryInsights = (primaryInsightsInput && primaryInsightsInput.value) ? primaryInsightsInput.value : (cached.primaryInsights || cached.primary_insights || '');
 
     // Grade Capture
     const gradeElement = q('.risk-tag');
@@ -1176,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
       company: company,
       promoters: promoters,
       sector: sector,
+      primary_insights: primaryInsights,
       grade: grade,
       riskClass: riskClass,
       metrics: {
@@ -1326,6 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Details
       if (q('#viewPromoters')) q('#viewPromoters').textContent = c.promoters;
       if (q('#viewSector')) q('#viewSector').textContent = c.sector;
+      if (q('#viewPrimaryInsights')) q('#viewPrimaryInsights').textContent = c.primary_insights || c.primaryInsights || '—';
       if (q('#viewEbitda')) q('#viewEbitda').textContent = formatINR(c.metrics.ebitda);
       if (q('#viewDebt')) q('#viewDebt').textContent = formatINR(c.metrics.debtService);
       if (q('#viewFacility')) q('#viewFacility').textContent = formatINR(c.metrics.facility);
@@ -1362,17 +1390,26 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: `${Number(baseExtracted?.bank?.bounce_count || 0)} event(s) detected in statement window`,
           };
 
-          const derived = [];
-          if (mismatch) derived.push(mismatch);
-          derived.push(bounce);
+	          const derived = [];
+	          if (mismatch) derived.push(mismatch);
+	          derived.push(bounce);
 
-          list.innerHTML = derived.map(item => `
-            <li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">
-              ${formatAlertItem(item)}
-            </li>
-          `).join('');
-        }
-      }
+	          const derivedHtml = derived.map(item => `
+	            <li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">
+	              ${formatAlertItem(item)}
+	            </li>
+	          `).join('');
+
+	          const rawHtml = alerts.slice(0, 6).map(a => `
+	            <li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">
+	              <div style="font-size: 0.75rem; font-weight: 900; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">AI Alert</div>
+	              <div style="margin-top: 6px; font-weight: 800; color: var(--heading-dark); line-height: 1.55;">${escapeHtml(a)}</div>
+	            </li>
+	          `).join('');
+
+	          list.innerHTML = derivedHtml + rawHtml;
+	        }
+	      }
 
       // Report download (client-side)
       const downloadBtn = q('#downloadAIReportBtn');

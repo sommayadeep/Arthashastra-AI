@@ -20,11 +20,12 @@ Usage
 - Double‑click start_localhost.command
   - It will pick a free port (prefers 8080, 8000, 5500, 3000, 5173)
   - Starts a Python-based static server bound to 127.0.0.1
+  - Starts the AI backend (Document Intelligence) at http://127.0.0.1:5050
   - Saves logs to .server.log and the PID to .server.pid
   - Opens your browser to http://localhost:<PORT>
 
 - Double‑click stop_localhost.command
-  - Stops the server using the saved PID
+  - Stops the server (and backend) using the saved PIDs
 
 Troubleshooting
 ---------------
@@ -40,9 +41,10 @@ Alternative (no scripts)
 
 AI Backend (Document Intelligence)
 ---------------------------------
-- In a second Terminal window, run: `python3 app.py`
-  - This starts the backend at `http://localhost:5050`
-  - The frontend will call `/api/case/analyze` (and falls back to `http://localhost:5050/api/case/analyze` if needed)
+- The start script launches the backend automatically.
+- If you prefer manual control, run: `python3 app.py`
+  - Backend: `http://127.0.0.1:5050`
+  - The frontend calls `/api/case/analyze` and falls back to `http://127.0.0.1:5050/api/case/analyze` if needed
 
 Tip: If you host the backend elsewhere, set:
 - `localStorage.setItem('arthashastra_backend_base', 'https://<your-backend-host>')`
