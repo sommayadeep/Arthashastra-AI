@@ -148,7 +148,8 @@
                 <p>Upload GST / ITR / Bank Statement files to auto-extract structured data, compute ratios, detect
                     anomalies (including <strong>GSTR-2A vs 3B reconciliation</strong> and <strong>circular trading</strong>
                     signals), enrich with <strong>MCA + e-Courts</strong> research, and return a risk status + AI credit
-                    summary (used by the existing dashboard UI).</p>
+                    summary (used by the existing dashboard UI). Also returns <strong>EWS sentiment</strong> and
+                    <strong>Audit-Link</strong> traceability.</p>
 
                 <table class="param-table">
                     <thead>
@@ -173,6 +174,11 @@
                             <td><code>bank_docs</code></td>
                             <td>File</td>
                             <td>Bank statement (.csv).</td>
+                        </tr>
+                        <tr>
+                            <td><code>qual_docs</code></td>
+                            <td>File</td>
+                            <td>Board minutes / rating notes text (.txt) for EWS sentiment heatmap.</td>
                         </tr>
                         <tr>
                             <td><code>adjust</code></td>
@@ -211,6 +217,8 @@
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"mca": { "cin": "U....", "charges": { "active_count": 1 } },<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ecourts": { "ongoing_count": 1 }<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;},<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"ews": { "sentiment": { "label": "Watchlist", "score": 62.1 } },<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"audit": { "items": [{ "id": "gst_recon_itc", "title": "GSTR-2A vs GSTR-3B reconciliation (ITC)" }] },<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;"credit_summary": "..."<br>
                     &nbsp;&nbsp;}<br>
                     }

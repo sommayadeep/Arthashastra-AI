@@ -178,27 +178,49 @@ document.addEventListener('DOMContentLoaded', () => {
     return score;
   }
 
-  function applyStressScenario(extracted) {
-    // Simulate macro stress:
-    // - Revenue/turnover -20%
-    // - Interest +1.5% (proxy: debt service +10%)
+  function estimateRawMaterialSensitivity(sector) {
+    const s = String(sector || '').toLowerCase();
+    if (s.includes('textile') || s.includes('steel') || s.includes('cement') || s.includes('auto') || s.includes('infra') || s.includes('manufact')) return 0.65;
+    if (s.includes('pharma') || s.includes('chemical') || s.includes('fmcg')) return 0.55;
+    if (s.includes('trading') || s.includes('logistics')) return 0.45;
+    if (s.includes('services') || s.includes('software') || s.includes('it')) return 0.25;
+    return 0.5;
+  }
+
+  function computeStressMultiplier(params) {
+    const rm = clamp(Number(params?.rawMaterialShockPct || 0), 0, 30);
+    const repo = clamp(Number(params?.repoRateShockPct || 0), 0, 3);
+    // Up to ~+30% multiplier under extreme settings (demo-friendly but bounded)
+    return 1 + (rm / 30) * 0.18 + (repo / 3) * 0.12;
+  }
+
+  function applyStressScenario(extracted, stressParams = null) {
+    // Simulate macro stress (digital twin):
+    // - Turnover/profit compression (raw material shock proxy)
+    // - Interest rate shock (repo delta proxy)
     // - Higher operational stress: balance volatility +1 bounce
     const clone = JSON.parse(JSON.stringify(extracted || {}));
-    if (clone.gst?.turnover_inr) clone.gst.turnover_inr = clone.gst.turnover_inr * 0.8;
-    if (clone.gst?.turnover_cr) clone.gst.turnover_cr = Math.round((clone.gst.turnover_cr * 0.8) * 100) / 100;
+    const rm = clamp(Number(stressParams?.rawMaterialShockPct ?? 15), 0, 30) / 100; // default 15%
+    const profitCompression = clamp(1 - (rm * 0.6), 0.6, 1.0); // compress profit more than revenue
+    const revCompression = clamp(1 - (rm * 0.35), 0.7, 1.0);
 
-    if (clone.itr?.revenue_inr) clone.itr.revenue_inr = clone.itr.revenue_inr * 0.8;
-    if (clone.itr?.revenue_cr) clone.itr.revenue_cr = Math.round((clone.itr.revenue_cr * 0.8) * 100) / 100;
-    if (clone.itr?.profit_inr) clone.itr.profit_inr = clone.itr.profit_inr * 0.8;
-    if (clone.itr?.profit_cr) clone.itr.profit_cr = Math.round((clone.itr.profit_cr * 0.8) * 100) / 100;
+    if (clone.gst?.turnover_inr) clone.gst.turnover_inr = clone.gst.turnover_inr * revCompression;
+    if (clone.gst?.turnover_cr) clone.gst.turnover_cr = Math.round((clone.gst.turnover_cr * revCompression) * 100) / 100;
+
+    if (clone.itr?.revenue_inr) clone.itr.revenue_inr = clone.itr.revenue_inr * revCompression;
+    if (clone.itr?.revenue_cr) clone.itr.revenue_cr = Math.round((clone.itr.revenue_cr * revCompression) * 100) / 100;
+    if (clone.itr?.profit_inr) clone.itr.profit_inr = clone.itr.profit_inr * profitCompression;
+    if (clone.itr?.profit_cr) clone.itr.profit_cr = Math.round((clone.itr.profit_cr * profitCompression) * 100) / 100;
 
     if (clone.bank?.avg_balance_inr) clone.bank.avg_balance_inr = clone.bank.avg_balance_inr * 0.85;
     if (clone.bank?.min_balance_inr) clone.bank.min_balance_inr = clone.bank.min_balance_inr * 0.8;
     if (clone.bank?.bounce_count != null) clone.bank.bounce_count = Number(clone.bank.bounce_count || 0) + 1;
 
-    // Interest rate +1.5% → proxy: debt service +10%
-    if (clone.bank?.debt_service_inr) clone.bank.debt_service_inr = clone.bank.debt_service_inr * 1.10;
-    if (clone.bank?.debt_service_cr) clone.bank.debt_service_cr = Math.round((clone.bank.debt_service_cr * 1.10) * 100) / 100;
+    // Interest rate shock (repo delta) → proxy: debt service uplift
+    const repo = clamp(Number(stressParams?.repoRateShockPct ?? 1), 0, 3); // default +1.00%
+    const uplift = 1 + clamp(repo * 0.06, 0, 0.22); // up to +22%
+    if (clone.bank?.debt_service_inr) clone.bank.debt_service_inr = clone.bank.debt_service_inr * uplift;
+    if (clone.bank?.debt_service_cr) clone.bank.debt_service_cr = Math.round((clone.bank.debt_service_cr * uplift) * 100) / 100;
 
     return clone;
   }
@@ -237,19 +259,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return { status: 'APPROVED', sanctionCr: null };
   }
 
-  function computeCoreDecision({ metrics, extracted, officerAdjust = 0, stressOn = false, warnings = null, docCoveragePercent = null } = {}) {
+  function computeCoreDecision({ metrics, extracted, officerAdjust = 0, stressOn = false, stressParams = null, sector = null, warnings = null, docCoveragePercent = null } = {}) {
     const m = metrics || {};
     const exBase = extracted || {};
-    const ex = stressOn ? applyStressScenario(exBase) : exBase;
+    const ex = stressOn ? applyStressScenario(exBase, stressParams) : exBase;
 
     // Metrics (Cr) – use case metrics when present, else use extracted proxies
-    const ebitdaCr = Number(m.ebitda ?? ex?.itr?.profit_cr ?? 0);
-    const debtCr = Number(m.debtService ?? ex?.bank?.debt_service_cr ?? 0);
+    const ebitdaCrBase = Number(m.ebitda ?? ex?.itr?.profit_cr ?? 0);
+    const debtCrBase = Number(m.debtService ?? ex?.bank?.debt_service_cr ?? 0);
     const facilityCr = Number(m.facility ?? ex?.gst?.turnover_cr ? (ex.gst.turnover_cr * 0.08) : 0);
     const networthCr = Number(m.networth ?? ex?.bank?.inflow_cr ? (ex.bank.inflow_cr * 0.25) : 0);
 
+    const rmShockPct = clamp(Number(stressParams?.rawMaterialShockPct ?? 15), 0, 30);
+    const repoShockPct = clamp(Number(stressParams?.repoRateShockPct ?? 1), 0, 3);
+    const rmSens = estimateRawMaterialSensitivity(sector);
+    const ebitdaCr = stressOn ? (ebitdaCrBase * clamp(1 - (rmShockPct / 100) * rmSens, 0.55, 1.0)) : ebitdaCrBase;
+    const addDebtCr = stressOn ? (facilityCr * (repoShockPct / 100) * 0.85) : 0;
+    const debtCr = stressOn ? (debtCrBase + addDebtCr) : debtCrBase;
+
     const dscr = debtCr > 0 ? (ebitdaCr / debtCr) : 0;
     const leverage = networthCr > 0 ? (facilityCr / networthCr) : 0;
+    const assumedRatePct = 12.5 + (stressOn ? repoShockPct : 0);
+    const interestCr = facilityCr > 0 ? (facilityCr * (assumedRatePct / 100)) : 0;
+    const icr = interestCr > 0 ? (ebitdaCr / interestCr) : 0;
 
     // Component risks (0..100)
     const cashFlowRisk = clamp((computeVolatilityScore(ex) * 0.7) + (computeDebtStressScore(ex) * 0.3), 0, 100);
@@ -277,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Predictive
     const basePd = computePD(riskScore);
-    const stressMultiplier = stressOn ? 1.22 : 1.0;
+    const stressMultiplier = stressOn ? computeStressMultiplier({ rawMaterialShockPct: rmShockPct, repoRateShockPct: repoShockPct }) : 1.0;
     const pd = clamp(basePd * stressMultiplier, 0.05, 0.6);
 
     const fraudScore = computeFraudIndicator(ex);
@@ -291,7 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bounceCount = Number(ex?.bank?.bounce_count || 0);
     const behaviorText = bounceCount > 0 ? `behavioral volatility (${bounceCount} return event${bounceCount === 1 ? '' : 's'})` : 'behavioral stability';
 
-    const summary = `While DSCR (${dscr ? dscr.toFixed(2) : '—'}x) indicates servicing capacity, ${varianceText} and ${behaviorText} introduce reporting integrity concerns. Underwriting stance remains ${riskStatus} risk with ${outcome.status} pending reconciliation validation.`;
+    const stressLine = stressOn ? ` under macro shocks (Raw Material +${rmShockPct}%, Repo +${repoShockPct.toFixed(2)}%)` : '';
+    const summary = `While DSCR (${dscr ? dscr.toFixed(2) : '—'}x) indicates servicing capacity, ${varianceText} and ${behaviorText} introduce reporting integrity concerns. Underwriting stance remains ${riskStatus} risk with ${outcome.status}${stressLine} pending reconciliation validation.`;
 
     const committeeView = outcome.status === 'APPROVED'
       ? 'Credit Committee View: Exposure can proceed under standard covenants.'
@@ -300,13 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       stressOn,
       extracted: ex,
-      metrics: { ebitdaCr, debtCr, facilityCr, networthCr, dscr, leverage },
+      metrics: { ebitdaCr, debtCr, facilityCr, networthCr, dscr, icr, leverage },
       components: { cashFlowRisk, complianceRisk, behavioralRisk, profitabilityRisk, stressSensitivity },
       risk: { score: Math.round(riskScore * 10) / 10, status: riskStatus },
       pd,
       fraudScore: Math.round(fraudScore),
       confidence: Math.round(confidenceAdjusted),
       outcome,
+      stress: stressOn ? { rawMaterialShockPct: rmShockPct, repoRateShockPct: repoShockPct } : null,
       xai: {
         financialHealthPct: Math.round(financialHealthPct * 10) / 10,
         alternativeDataPct: Math.round(alternativeDataPct * 10) / 10,
@@ -411,6 +445,230 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  function severityForGovernanceFlag(text) {
+    const t = String(text || '').toLowerCase();
+    if (t.includes('ghost director') || t.includes('contagion') || t.includes('distressed')) {
+      return { level: 'High', color: '#8B2942' };
+    }
+    if (t.includes('auditor') || t.includes('independence')) {
+      return { level: 'Medium', color: '#9E7C2F' };
+    }
+    return { level: 'Low', color: '#27ae60' };
+  }
+
+  function renderGovernanceNetwork(container, network) {
+    if (!container) return;
+    const nodes = Array.isArray(network?.nodes) ? network.nodes : [];
+    const edges = Array.isArray(network?.edges) ? network.edges : [];
+
+    if (!nodes.length) {
+      container.textContent = 'No network loaded.';
+      return;
+    }
+
+    const W = 640;
+    const H = 210;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    const byType = (type) => nodes.filter(n => n?.type === type);
+    const company = byType('company')[0] || nodes[0];
+    const directors = byType('director');
+    const related = byType('related');
+    const auditors = byType('auditor');
+
+    const pos = new Map();
+    pos.set(company.id, { x: cx, y: cy });
+
+    // Directors (top arc)
+    const dN = directors.length || 1;
+    directors.forEach((n, i) => {
+      const a = (-Math.PI / 2) + ((i - (dN - 1) / 2) * (Math.PI / 6));
+      const r = 85;
+      pos.set(n.id, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    });
+
+    // Related entities (bottom arc)
+    const rN = related.length || 1;
+    related.forEach((n, i) => {
+      const a = (Math.PI / 2) + ((i - (rN - 1) / 2) * (Math.PI / 7));
+      const r = 95;
+      pos.set(n.id, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    });
+
+    // Auditor (left)
+    auditors.forEach((n, i) => {
+      pos.set(n.id, { x: 120, y: cy + (i * 34) });
+    });
+
+    const getColor = (type) => {
+      if (type === 'company') return '#1A2540';
+      if (type === 'director') return '#B9953B';
+      if (type === 'auditor') return '#8B2942';
+      if (type === 'related') return '#9E7C2F';
+      return '#666';
+    };
+
+    const short = (s, max = 18) => {
+      const str = String(s || '');
+      return str.length > max ? str.slice(0, max - 1) + '…' : str;
+    };
+
+    container.innerHTML = '';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+
+    // Edges first
+    edges.forEach(e => {
+      const a = pos.get(e?.from);
+      const b = pos.get(e?.to);
+      if (!a || !b) return;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(a.x));
+      line.setAttribute('y1', String(a.y));
+      line.setAttribute('x2', String(b.x));
+      line.setAttribute('y2', String(b.y));
+      line.setAttribute('stroke', 'rgba(26,37,64,0.35)');
+      line.setAttribute('stroke-width', '2');
+      svg.appendChild(line);
+    });
+
+    // Nodes
+    nodes.forEach(n => {
+      const p = pos.get(n.id);
+      if (!p) return;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', String(p.x));
+      circle.setAttribute('cy', String(p.y));
+      circle.setAttribute('r', n.type === 'company' ? '18' : '14');
+      circle.setAttribute('fill', getColor(n.type));
+      circle.setAttribute('opacity', '0.95');
+      g.appendChild(circle);
+
+      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      title.textContent = String(n.label || '');
+      g.appendChild(title);
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', String(p.x));
+      text.setAttribute('y', String(p.y + (n.type === 'company' ? 34 : 30)));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('font-weight', '800');
+      text.setAttribute('fill', '#1A2540');
+      text.textContent = short(n.label, n.type === 'company' ? 22 : 18);
+      g.appendChild(text);
+
+      svg.appendChild(g);
+    });
+
+    container.appendChild(svg);
+  }
+
+  function renderEwsPanel(sentiment) {
+    const labelEl = q('#ewsLabel');
+    const heat = q('#ewsHeatmap');
+    const sigEl = q('#ewsSignals');
+    if (!labelEl || !heat || !sigEl) return;
+
+    if (!sentiment || typeof sentiment !== 'object') {
+      labelEl.textContent = '--';
+      sigEl.textContent = 'Upload board minutes / rating notes (TXT) to generate a 3Y sentiment heatmap.';
+      return;
+    }
+
+    const score = Number(sentiment.score);
+    const lbl = String(sentiment.label || '—');
+    const color = lbl === 'Elevated' ? '#8B2942' : (lbl === 'Watchlist' ? '#9E7C2F' : '#27ae60');
+    labelEl.textContent = `${lbl} • ${Number.isFinite(score) ? score.toFixed(1) : '--'}`;
+    labelEl.style.color = color;
+
+    const trend = Array.isArray(sentiment.trend) && sentiment.trend.length ? sentiment.trend : [
+      { period: 'FY-2', score: score },
+      { period: 'FY-1', score: score },
+      { period: 'FY0', score: score },
+    ];
+
+    heat.innerHTML = trend.slice(0, 3).map(t => {
+      const s = clamp(Number(t.score || 0), 0, 100);
+      const h = 10 + (s / 100) * 34;
+      return `<div title="${escapeHtml(t.period || '')}: ${s.toFixed(1)}" style="flex:1; height:${h}px; background:${color}; border: 1px solid rgba(26,37,64,0.2);"></div>`;
+    }).join('');
+
+    const signals = Array.isArray(sentiment.signals) ? sentiment.signals : [];
+    sigEl.textContent = signals.length ? `Signals: ${signals.slice(0, 8).join(', ')}` : 'No distress markers detected in qualitative text.';
+  }
+
+  function openAuditModal(item) {
+    if (!item) return;
+    const existing = document.querySelector('#auditModalOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'auditModalOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.55)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '20px';
+
+    const card = document.createElement('div');
+    card.style.maxWidth = '820px';
+    card.style.width = '100%';
+    card.style.maxHeight = '80vh';
+    card.style.overflow = 'auto';
+    card.style.background = 'white';
+    card.style.borderRadius = '12px';
+    card.style.border = '2px solid rgba(185,149,59,0.45)';
+    card.style.boxShadow = '0 20px 50px rgba(0,0,0,0.35)';
+    card.style.padding = '18px';
+
+    const title = escapeHtml(item.title || 'Audit Evidence');
+    const src = item.source || {};
+    const srcLine = `Source: ${escapeHtml(src.doc || '—')} • ${escapeHtml(src.file || '—')}`;
+    const fields = Array.isArray(src.fields) ? src.fields.join(', ') : '';
+
+    const evidenceJson = (() => {
+      try { return JSON.stringify(item.evidence || {}, null, 2); } catch { return '{}'; }
+    })();
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;">
+        <div>
+          <div style="font-weight:900; color:#1A2540; font-size:1.05rem;">${title}</div>
+          <div style="margin-top:6px; color:#555; font-weight:800; font-size:0.85rem;">${srcLine}</div>
+          ${fields ? `<div style="margin-top:4px; color:#666; font-weight:800; font-size:0.82rem;">Fields: ${escapeHtml(fields)}</div>` : ''}
+        </div>
+        <button id="auditModalClose" class="btn" style="padding:10px 12px; border:2px solid #1A2540; background:transparent; color:#1A2540;">Close</button>
+      </div>
+      <div style="border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:900; color:#1A2540; font-size:0.85rem; letter-spacing:1px; text-transform:uppercase;">Evidence</div>
+        <pre style="margin-top:10px; white-space:pre-wrap; background:#f7f7f7; border:1px solid #eee; border-radius:10px; padding:12px; font-size:0.85rem; line-height:1.5;">${escapeHtml(evidenceJson)}</pre>
+        <div style="margin-top:10px; font-size:0.82rem; color:#666; font-weight:800;">Tip: This is the source-to-decision map (prototype). For PDFs, production mode deep-links to page+highlight.</div>
+      </div>
+    `;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+    card.querySelector('#auditModalClose')?.addEventListener('click', close);
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey, { once: true });
+  }
+
   function buildInstitutionalSummary({ company, sector, extracted, metrics }) {
     const variance = computeMismatchVariancePct(extracted);
     const gstRecon = computeGSTReconciliationVariancePct(extracted);
@@ -502,6 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const research = ai.research || {};
     const mca = research?.mca || null;
     const ec = research?.ecourts || null;
+    const gov = research?.governance || null;
+    const sent = ai?.ews?.sentiment || null;
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -544,6 +804,15 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="k">AI Credit Summary</div>
     <div class="muted" style="margin-top:8px">${escapeHtml(ai.credit_summary || '—')}</div>
   </div>
+  ${sent ? `
+  <div class="card" style="margin-top:14px">
+    <div class="k">Early Warning Signals (EWS)</div>
+    <div class="muted" style="margin-top:8px">
+      Sentiment: <strong>${escapeHtml(sent?.label || '—')}</strong> • Score: ${escapeHtml(sent?.score ?? '—')}<br>
+      ${Array.isArray(sent?.signals) && sent.signals.length ? `Signals: ${escapeHtml(sent.signals.slice(0, 10).join(', '))}` : 'Signals: —'}
+    </div>
+  </div>
+  ` : ''}
   ${(mca || ec) ? `
   <div class="card" style="margin-top:14px">
     <div class="k">External Research Sources</div>
@@ -561,6 +830,10 @@ document.addEventListener('DOMContentLoaded', () => {
         Active charges: ${escapeHtml(mca?.charges?.active_count ?? '—')}
       </div>
       ${Array.isArray(mca?.flags) && mca.flags.length ? `<ul>${mca.flags.slice(0, 3).map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>` : ''}
+      ${Array.isArray(gov?.flags) && gov.flags.length ? `
+        <div class="muted" style="margin-top:10px;font-weight:700">Governance network:</div>
+        <ul>${gov.flags.slice(0, 3).map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+      ` : ''}
     </div>
     <div class="card">
       <div class="k">e-Courts / Litigation</div>
@@ -844,9 +1117,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const gst = q('#gst_docs');
         const itr = q('#itr_docs');
         const bank = q('#bank_docs');
+        const qual = q('#qual_docs');
         if (gst?.files?.[0]) formData.append('gst_docs', gst.files[0]);
         if (itr?.files?.[0]) formData.append('itr_docs', itr.files[0]);
         if (bank?.files?.[0]) formData.append('bank_docs', bank.files[0]);
+        if (qual?.files?.[0]) formData.append('qual_docs', qual.files[0]);
         if (q('#company')?.value) formData.append('company', q('#company').value);
         if (q('#promoters')?.value) formData.append('promoters', q('#promoters').value);
         if (q('#sector')?.value) formData.append('sector', q('#sector').value);
@@ -1038,6 +1313,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span style="font-weight: 900; color: var(--imperial-indigo);">AI Summary:</span>
                 <span id="cam-ai-summary">—</span>
               </div>
+              <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-gold);">
+                <div style="font-weight: 900; color: var(--imperial-indigo); font-size: 0.9rem;">Audit-Link Evidence</div>
+                <ul id="cam-audit-links" style="list-style: none; padding: 0; margin: 10px 0 0 0; display: grid; gap: 8px; font-weight: 800; font-size: 0.85rem;">
+                  <li style="color: var(--text-secondary); font-weight: 700;">No evidence loaded.</li>
+                </ul>
+              </div>
+              <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-gold);">
+                <div style="font-weight: 900; color: var(--imperial-indigo); font-size: 0.9rem;">Digital Twin Simulator</div>
+                <div style="margin-top: 10px; display:grid; gap: 10px;">
+                  <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <div style="font-weight: 900; color: var(--heading-dark); font-size: 0.82rem;">Raw Material Cost Shock</div>
+                      <div id="camRawMatLabel" style="font-weight: 900; color: var(--antique-gold); font-size: 0.82rem;">+15%</div>
+                    </div>
+                    <input id="camRawMatShock" type="range" min="0" max="30" value="15" style="width:100%; accent-color: var(--antique-gold); margin-top: 6px;">
+                  </div>
+                  <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <div style="font-weight: 900; color: var(--heading-dark); font-size: 0.82rem;">RBI Repo Rate Shock</div>
+                      <div id="camRepoLabel" style="font-weight: 900; color: var(--antique-gold); font-size: 0.82rem;">+1.00%</div>
+                    </div>
+                    <input id="camRepoShock" type="range" min="0" max="3" value="1" step="0.25" style="width:100%; accent-color: var(--antique-gold); margin-top: 6px;">
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 800;">
+                    Stressed DSCR: <span id="camStressDscr" style="font-weight: 900; color: var(--imperial-indigo);">--</span>
+                    • Interest Coverage: <span id="camStressIcr" style="font-weight: 900; color: var(--imperial-indigo);">--</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1092,6 +1396,72 @@ document.addEventListener('DOMContentLoaded', () => {
           list.innerHTML = alerts.slice(0, 6).map(a => `<li>${escapeHtml(a)}</li>`).join('');
         }
       }
+
+      // CAM audit-link evidence (click to open)
+      const camAudit = q('#cam-audit-links');
+      const auditItems = Array.isArray(ai?.audit?.items) ? ai.audit.items : [];
+      if (camAudit) {
+        if (!auditItems.length) {
+          camAudit.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No evidence available.</li>`;
+        } else {
+          camAudit.innerHTML = auditItems.slice(0, 6).map((it, idx) => {
+            return `<li><a href="#" data-audit-idx="${idx}" style="color: var(--imperial-indigo); font-weight: 900; text-decoration: none;">${escapeHtml(it?.title || 'Evidence')}</a></li>`;
+          }).join('');
+          if (!camAudit._auditBound) {
+            camAudit._auditBound = true;
+            camAudit.addEventListener('click', (e) => {
+              const a = e.target.closest('[data-audit-idx]');
+              if (!a) return;
+              e.preventDefault();
+              const idx = Number(a.getAttribute('data-audit-idx'));
+              if (!Number.isFinite(idx) || !auditItems[idx]) return;
+              openAuditModal(auditItems[idx]);
+            });
+          }
+        }
+      }
+
+      // CAM digital twin sliders (instant DSCR/ICR recompute)
+      const rmSlider = q('#camRawMatShock');
+      const repoSlider = q('#camRepoShock');
+      const rmLabel = q('#camRawMatLabel');
+      const repoLabel = q('#camRepoLabel');
+
+      const updateCamTwin = () => {
+        const stressParams = {
+          rawMaterialShockPct: Number(rmSlider?.value || 0),
+          repoRateShockPct: Number(repoSlider?.value || 0),
+        };
+        if (rmLabel) rmLabel.textContent = `+${Math.round(stressParams.rawMaterialShockPct)}%`;
+        if (repoLabel) repoLabel.textContent = `+${Number(stressParams.repoRateShockPct).toFixed(2)}%`;
+
+        const m = {
+          ebitda: parseAmountToCr(q('#ebitda')?.value) ?? 0,
+          debtService: parseAmountToCr(q('#debtService')?.value) ?? 0,
+          facility: parseAmountToCr(q('#facility')?.value) ?? 0,
+          networth: parseAmountToCr(q('#networth')?.value) ?? 0,
+        };
+        const decision = computeCoreDecision({
+          metrics: m,
+          extracted: ai?.extracted || {},
+          officerAdjust: 0,
+          stressOn: true,
+          stressParams,
+          sector: data.sector,
+        });
+        if (q('#camStressDscr')) q('#camStressDscr').textContent = Number.isFinite(decision.metrics.dscr) ? `${decision.metrics.dscr.toFixed(2)}x` : '--';
+        if (q('#camStressIcr')) q('#camStressIcr').textContent = Number.isFinite(decision.metrics.icr) ? `${decision.metrics.icr.toFixed(2)}x` : '--';
+        if (q('#cam-risk-status')) {
+          q('#cam-risk-status').textContent = decision.risk.status;
+          q('#cam-risk-status').style.color = riskStatusColor(decision.risk.status);
+        }
+        if (q('#cam-risk-score')) q('#cam-risk-score').textContent = `Stressed risk score: ${decision.risk.score}`;
+        if (q('#cam-pd-line')) q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(decision.pd * 100)}%`;
+      };
+
+      updateCamTwin();
+      if (rmSlider) rmSlider.addEventListener('input', updateCamTwin);
+      if (repoSlider) repoSlider.addEventListener('input', updateCamTwin);
 
       // Make AI summary more institutional (when we have extracted signals)
       if (q('#cam-ai-summary') && ai?.extracted) {
@@ -1421,6 +1791,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const ai = c.ai || {};
       const risk = ai.risk || {};
       const baseExtracted = ai.extracted || {};
+
+      // --- Governance Network (MCA knowledge graph) ---
+      const dossier = ai.research || {};
+      const gov = dossier.governance || {};
+      const govFlags = Array.isArray(gov?.flags) ? gov.flags : [];
+      const govList = q('#govFlags');
+      if (govList) {
+        if (!govFlags.length) {
+          govList.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No governance red-flags detected.</li>`;
+        } else {
+          govList.innerHTML = govFlags.slice(0, 6).map(f => {
+            const sev = severityForGovernanceFlag(f);
+            return `<li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">${formatAlertItem({ severity: sev, text: f, detail: '' })}</li>`;
+          }).join('');
+        }
+      }
+      renderGovernanceNetwork(q('#govGraph'), dossier.network);
+      if (q('#govSources') && dossier?.sources) {
+        q('#govSources').textContent = `Sources: ${dossier.sources.mca || 'MCA filings'}${dossier.sources.ecourts ? ' • ' + dossier.sources.ecourts : ''}`;
+      }
+      renderEwsPanel(ai?.ews?.sentiment);
+
       if (q('#viewRiskStatus')) {
         q('#viewRiskStatus').textContent = risk.status || '--';
         q('#viewRiskStatus').style.color = riskStatusColor(risk.status);
@@ -1474,6 +1866,41 @@ document.addEventListener('DOMContentLoaded', () => {
 	        }
 	      }
 
+      // Audit-link traceability
+      const auditItems = Array.isArray(ai?.audit?.items) ? ai.audit.items : [];
+      const auditList = q('#auditLinksList');
+      if (auditList) {
+        if (!auditItems.length) {
+          auditList.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No audit links available.</li>`;
+        } else {
+          auditList.innerHTML = auditItems.slice(0, 10).map((it, idx) => {
+            const src = it?.source || {};
+            return `
+              <li style="padding: 12px 14px; border: 1px dashed var(--border-gold); border-radius: 4px; background: rgba(255,255,255,0.6);">
+                <a href="#" data-audit-idx="${idx}" style="text-decoration:none; color: var(--heading-dark); display:block;">
+                  <div style="font-size: 0.75rem; font-weight: 900; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Evidence Link</div>
+                  <div style="margin-top: 6px; font-weight: 900; color: var(--imperial-indigo); line-height: 1.45;">${escapeHtml(it?.title || '—')}</div>
+                  <div style="margin-top: 6px; font-weight: 800; color: var(--text-secondary); font-size: 0.85rem;">${escapeHtml(src.doc || '—')} • ${escapeHtml(src.file || '—')}</div>
+                </a>
+              </li>
+            `;
+          }).join('');
+
+          // One-time click delegation
+          if (!auditList._auditBound) {
+            auditList._auditBound = true;
+            auditList.addEventListener('click', (e) => {
+              const a = e.target.closest('[data-audit-idx]');
+              if (!a) return;
+              e.preventDefault();
+              const idx = Number(a.getAttribute('data-audit-idx'));
+              if (!Number.isFinite(idx) || !auditItems[idx]) return;
+              openAuditModal(auditItems[idx]);
+            });
+          }
+        }
+      }
+
       // Report download (client-side)
       const downloadBtn = q('#downloadAIReportBtn');
       if (downloadBtn) {
@@ -1493,6 +1920,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Predictive + explainability + stress simulation
       let stressOn = false;
+      const stressParams = { rawMaterialShockPct: 15, repoRateShockPct: 1 };
 
       const refreshRiskPanel = (extracted) => {
         const decision = computeCoreDecision({
@@ -1505,8 +1933,15 @@ document.addEventListener('DOMContentLoaded', () => {
           extracted,
           officerAdjust: 0,
           stressOn,
+          stressParams,
+          sector: c?.sector,
           warnings: ai.warnings || null,
         });
+
+        const fmtX = (v) => Number.isFinite(Number(v)) ? `${Number(v).toFixed(2)}x` : '--';
+        if (q('#viewDscr')) q('#viewDscr').textContent = fmtX(decision.metrics.dscr);
+        if (q('#viewIcr')) q('#viewIcr').textContent = fmtX(decision.metrics.icr);
+        if (q('#viewLeverage')) q('#viewLeverage').textContent = fmtX(decision.metrics.leverage);
 
         if (q('#viewRiskStatus')) {
           q('#viewRiskStatus').textContent = decision.risk.status || '--';
@@ -1554,15 +1989,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const stressBtn = q('#stressSimBtn');
       const stressBadge = q('#stressBadge');
+      const stressControls = q('#stressControls');
+      const rawMat = q('#rawMatShock');
+      const repoShock = q('#repoShock');
+
+      const updateStressLabels = () => {
+        if (q('#rawMatLabel')) q('#rawMatLabel').textContent = `+${Math.round(Number(stressParams.rawMaterialShockPct || 0))}%`;
+        if (q('#repoLabel')) q('#repoLabel').textContent = `+${Number(stressParams.repoRateShockPct || 0).toFixed(2)}%`;
+      };
+
+      updateStressLabels();
+
+      if (rawMat) {
+        rawMat.addEventListener('input', () => {
+          stressParams.rawMaterialShockPct = Number(rawMat.value || 0);
+          updateStressLabels();
+          if (stressOn) refreshRiskPanel(baseExtracted);
+        });
+      }
+      if (repoShock) {
+        repoShock.addEventListener('input', () => {
+          stressParams.repoRateShockPct = Number(repoShock.value || 0);
+          updateStressLabels();
+          if (stressOn) refreshRiskPanel(baseExtracted);
+        });
+      }
+
       if (stressBtn) {
         stressBtn.addEventListener('click', () => {
           stressOn = !stressOn;
           if (stressBadge) stressBadge.style.display = stressOn ? 'inline-block' : 'none';
+          if (stressControls) stressControls.style.display = stressOn ? 'block' : 'none';
           stressBtn.textContent = stressOn ? 'Reset Stress Simulation' : 'Simulate Economic Stress';
           const extracted = baseExtracted;
           // Animated flip for judges (risk score)
-          const before = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn: !stressOn, warnings: ai.warnings || null });
-          const after = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn, warnings: ai.warnings || null });
+          const before = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn: !stressOn, stressParams, sector: c?.sector, warnings: ai.warnings || null });
+          const after = computeCoreDecision({ metrics: { ebitda: Number(c?.metrics?.ebitda), debtService: Number(c?.metrics?.debtService), facility: Number(c?.metrics?.facility), networth: Number(c?.metrics?.networth) }, extracted, officerAdjust: 0, stressOn, stressParams, sector: c?.sector, warnings: ai.warnings || null });
           animateNumber({
             from: Number(before.risk.score || 0),
             to: Number(after.risk.score || 0),

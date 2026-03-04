@@ -6,9 +6,30 @@
         "status": "Active",
         "roc": "ROC Delhi",
         "last_filing_date": "2025-09-30",
+        "statutory_auditor": {
+          "firm": "Kautilya & Co LLP",
+          "partner": "S. Sharma (FRN 012345N)",
+          "tenure_years": 5
+        },
         "directors": [
-          { "name": "Rajesh Gupta", "din": "01234567", "role": "Director" },
-          { "name": "Anita Gupta", "din": "07654321", "role": "Director" }
+          { "name": "Rajesh Gupta", "din": "01234567", "role": "Director", "board_seats": 12, "distressed_boards": 4 },
+          { "name": "Anita Gupta", "din": "07654321", "role": "Director", "board_seats": 3, "distressed_boards": 0 }
+        ],
+        "related_entities": [
+          {
+            "name": "Chandragupta Logistics Pvt Ltd",
+            "cin": "U63030DL2016PTC654321",
+            "cross_holding_pct": 22,
+            "auditor_firm": "Kautilya & Co LLP",
+            "risk_note": "High related-party exposure via inter-company advances."
+          },
+          {
+            "name": "Bindusara Trading LLP",
+            "cin": "AAB-1234",
+            "cross_holding_pct": 14,
+            "auditor_firm": "Kautilya & Co LLP",
+            "risk_note": "Material GST-bank churn observed in group."
+          }
         ],
         "charges": {
           "active_count": 1,
@@ -71,4 +92,3 @@
     }
   }
 }
-

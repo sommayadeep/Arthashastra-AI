@@ -1,4 +1,9 @@
 {
   "revenue_inr": 115000000,
-  "profit_inr": 8200000
+  "revenue_prev_inr": 76000000,
+  "profit_inr": 8200000,
+  "electricity_expense_inr": 2100000,
+  "electricity_expense_prev_inr": 2050000,
+  "legal_expense_inr": 1400000,
+  "legal_expense_prev_inr": 900000
 }

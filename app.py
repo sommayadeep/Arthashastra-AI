@@ -7,6 +7,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from backend_ai_agent import BankingNewsOrchestrator
 from credit_intelligence import compute_credit_intelligence, parse_bank, parse_gst, parse_itr
 from research_intelligence import compute_research_dossier, research_alerts
+from sentiment_intelligence import compute_ews_sentiment
+from audit_intelligence import build_audit_links
 
 
 agent = BankingNewsOrchestrator()
@@ -24,6 +26,7 @@ def _analyze_from_files(files, form):
     gst_file = files.get("gst_docs")
     itr_file = files.get("itr_docs")
     bank_file = files.get("bank_docs")
+    qual_file = files.get("qual_docs")
 
     parsed_gst, w = (
         parse_gst(gst_file.read(), gst_file.filename) if gst_file else (parse_gst(b"", ""), ["GST not provided."])
@@ -41,6 +44,23 @@ def _analyze_from_files(files, form):
     warnings.extend(w)
 
     intelligence = compute_credit_intelligence(parsed_gst, parsed_itr, parsed_bank, officer_adjustment=officer_adjust)
+
+    qual_text = ""
+    if qual_file:
+        name = (qual_file.filename or "").lower()
+        if name.endswith(".txt") or name.endswith(".md"):
+            try:
+                qual_text = qual_file.read().decode("utf-8", errors="ignore")
+            except Exception:
+                qual_text = ""
+        else:
+            warnings.append("Qualitative docs provided but not parsed (supported: .txt).")
+
+    sentiment = compute_ews_sentiment(qual_text, primary_insights=form.get("primary_insights"))
+    intelligence["ews"] = {"sentiment": sentiment}
+    if isinstance(intelligence.get("alerts"), list) and sentiment.get("label") in {"Watchlist", "Elevated"}:
+        intelligence["alerts"].append(f"EWS sentiment: {sentiment.get('label')} (defensive tone / distress markers).")
+
     dossier = compute_research_dossier(form.get("company"), form.get("promoters"), form.get("sector"))
     intelligence["research"] = dossier
     # Surface MCA/e-Courts signals directly in alerts for quick demo visibility
@@ -51,6 +71,16 @@ def _analyze_from_files(files, form):
             intelligence["alerts"] = intelligence_alerts
     except Exception:
         pass
+
+    intelligence["audit"] = build_audit_links(
+        gst_filename=getattr(gst_file, "filename", None) if gst_file else None,
+        itr_filename=getattr(itr_file, "filename", None) if itr_file else None,
+        bank_filename=getattr(bank_file, "filename", None) if bank_file else None,
+        qual_filename=getattr(qual_file, "filename", None) if qual_file else None,
+        extracted=intelligence.get("extracted") or {},
+        dossier=dossier,
+        sentiment=sentiment,
+    )
 
     passthrough = {
         "company": form.get("company") or None,
@@ -173,7 +203,7 @@ except Exception:
                         return self._item.file.read() if getattr(self._item, "file", None) else b""
 
                 files = {}
-                for k in ("gst_docs", "itr_docs", "bank_docs"):
+                for k in ("gst_docs", "itr_docs", "bank_docs", "qual_docs"):
                     if k in form:
                         item = form[k]
                         if isinstance(item, list):

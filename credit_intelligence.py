@@ -48,6 +48,11 @@ class ParsedGST:
 class ParsedITR:
     profit_inr: Optional[float]
     revenue_inr: Optional[float]
+    revenue_prev_inr: Optional[float] = None
+    electricity_expense_inr: Optional[float] = None
+    electricity_expense_prev_inr: Optional[float] = None
+    legal_expense_inr: Optional[float] = None
+    legal_expense_prev_inr: Optional[float] = None
 
 
 @dataclass
@@ -222,20 +227,69 @@ def parse_itr(file_bytes: bytes, filename: str) -> Tuple[ParsedITR, List[str]]:
         obj = parse_json_bytes(file_bytes) or {}
         profit_inr = _safe_float(obj.get("profit_inr") or obj.get("pbt_inr") or obj.get("pat_inr") or obj.get("profit"))
         revenue_inr = _safe_float(obj.get("revenue_inr") or obj.get("sales_inr") or obj.get("revenue"))
-        return ParsedITR(profit_inr=profit_inr, revenue_inr=revenue_inr), warnings
+        revenue_prev_inr = _safe_float(obj.get("revenue_prev_inr") or obj.get("sales_prev_inr") or obj.get("revenue_py_inr"))
+        electricity_expense_inr = _safe_float(
+            obj.get("electricity_expense_inr")
+            or obj.get("power_fuel_inr")
+            or obj.get("electricity_inr")
+            or obj.get("utilities_inr")
+        )
+        electricity_expense_prev_inr = _safe_float(
+            obj.get("electricity_expense_prev_inr")
+            or obj.get("power_fuel_prev_inr")
+            or obj.get("electricity_prev_inr")
+            or obj.get("utilities_prev_inr")
+        )
+        legal_expense_inr = _safe_float(obj.get("legal_expense_inr") or obj.get("legal_fees_inr") or obj.get("legal_inr"))
+        legal_expense_prev_inr = _safe_float(
+            obj.get("legal_expense_prev_inr") or obj.get("legal_fees_prev_inr") or obj.get("legal_prev_inr")
+        )
+        return (
+            ParsedITR(
+                profit_inr=profit_inr,
+                revenue_inr=revenue_inr,
+                revenue_prev_inr=revenue_prev_inr,
+                electricity_expense_inr=electricity_expense_inr,
+                electricity_expense_prev_inr=electricity_expense_prev_inr,
+                legal_expense_inr=legal_expense_inr,
+                legal_expense_prev_inr=legal_expense_prev_inr,
+            ),
+            warnings,
+        )
 
     if name.endswith(".csv"):
         rows, headers = parse_csv_bytes(file_bytes)
         # Common patterns: one-row summary with profit/revenue columns
         profit_col = next((h for h in headers if h.lower() in {"profit", "profit_inr", "pat", "pbt", "net_profit"}), None)
         revenue_col = next((h for h in headers if h.lower() in {"revenue", "revenue_inr", "sales", "turnover"}), None)
+        revenue_prev_col = next((h for h in headers if h.lower() in {"revenue_prev_inr", "sales_prev_inr", "revenue_py_inr"}), None)
+        elec_col = next((h for h in headers if h.lower() in {"electricity_expense_inr", "power_fuel_inr", "utilities_inr"}), None)
+        elec_prev_col = next((h for h in headers if h.lower() in {"electricity_expense_prev_inr", "power_fuel_prev_inr", "utilities_prev_inr"}), None)
+        legal_col = next((h for h in headers if h.lower() in {"legal_expense_inr", "legal_fees_inr", "legal_inr"}), None)
+        legal_prev_col = next((h for h in headers if h.lower() in {"legal_expense_prev_inr", "legal_fees_prev_inr", "legal_prev_inr"}), None)
         if rows:
             r0 = rows[0]
             profit_inr = _safe_float(r0.get(profit_col)) if profit_col else None
             revenue_inr = _safe_float(r0.get(revenue_col)) if revenue_col else None
+            revenue_prev_inr = _safe_float(r0.get(revenue_prev_col)) if revenue_prev_col else None
+            electricity_expense_inr = _safe_float(r0.get(elec_col)) if elec_col else None
+            electricity_expense_prev_inr = _safe_float(r0.get(elec_prev_col)) if elec_prev_col else None
+            legal_expense_inr = _safe_float(r0.get(legal_col)) if legal_col else None
+            legal_expense_prev_inr = _safe_float(r0.get(legal_prev_col)) if legal_prev_col else None
         if profit_inr is None and profit_col is None:
             warnings.append("ITR CSV: missing profit column (expected 'profit'/'pat'/'pbt').")
-        return ParsedITR(profit_inr=profit_inr, revenue_inr=revenue_inr), warnings
+        return (
+            ParsedITR(
+                profit_inr=profit_inr,
+                revenue_inr=revenue_inr,
+                revenue_prev_inr=revenue_prev_inr,
+                electricity_expense_inr=electricity_expense_inr,
+                electricity_expense_prev_inr=electricity_expense_prev_inr,
+                legal_expense_inr=legal_expense_inr,
+                legal_expense_prev_inr=legal_expense_prev_inr,
+            ),
+            warnings,
+        )
 
     warnings.append("ITR file not parsed (supported: .csv, .json).")
     return ParsedITR(profit_inr=None, revenue_inr=None), warnings
@@ -426,6 +480,32 @@ def compute_credit_intelligence(
         elif variance >= 0.12:
             alerts.append("Moderate ITR revenue ↔ GST turnover variance observed (timing difference possible).")
 
+    # Truth-Seeker triangulation: physical proxy (utilities) vs revenue growth
+    if (
+        itr.revenue_inr is not None
+        and itr.revenue_prev_inr is not None
+        and itr.revenue_prev_inr > 0
+        and itr.electricity_expense_inr is not None
+        and itr.electricity_expense_prev_inr is not None
+        and itr.electricity_expense_prev_inr > 0
+    ):
+        rev_g = (itr.revenue_inr - itr.revenue_prev_inr) / itr.revenue_prev_inr
+        elec_g = (itr.electricity_expense_inr - itr.electricity_expense_prev_inr) / itr.electricity_expense_prev_inr
+        if rev_g >= 0.35 and elec_g <= 0.05:
+            alerts.append(
+                f"Truth-Seeker triangulation: Revenue +{int(round(rev_g*100))}% but utilities +{int(round(elec_g*100))}% (capacity proxy flat) — possible paper revenue / circular trading."
+            )
+        elif rev_g >= 0.25 and elec_g < 0:
+            alerts.append(
+                "Triangulation anomaly: revenue up while utilities down (verify production, billing, and revenue recognition)."
+            )
+
+    # Early warning: creeping legal costs (fine-print distress signal)
+    if itr.legal_expense_inr is not None and itr.legal_expense_prev_inr is not None and itr.legal_expense_prev_inr > 0:
+        lg = (itr.legal_expense_inr - itr.legal_expense_prev_inr) / itr.legal_expense_prev_inr
+        if lg >= 0.40:
+            alerts.append(f"Early Warning Signal: legal expenses +{int(round(lg*100))}% YoY (possible disputes/compliance stress).")
+
     # India-specific GST reconciliation (GSTR-2A vs GSTR-3B)
     if gst.gstr_2a_itc_inr is not None and gst.gstr_3b_itc_inr is not None:
         denom = max(gst.gstr_2a_itc_inr, gst.gstr_3b_itc_inr, 0.0)
@@ -488,6 +568,25 @@ def compute_credit_intelligence(
         denom = max(itr.revenue_inr, gst_turnover)
         variance = abs(itr.revenue_inr - gst_turnover) / denom if denom > 0 else 0.0
         score += _clamp(variance * 100.0 * 0.08, 0.0, 8.0)
+
+    # Triangulation / EWS penalty (small but visible)
+    if (
+        itr.revenue_inr is not None
+        and itr.revenue_prev_inr is not None
+        and itr.revenue_prev_inr > 0
+        and itr.electricity_expense_inr is not None
+        and itr.electricity_expense_prev_inr is not None
+        and itr.electricity_expense_prev_inr > 0
+    ):
+        rev_g = (itr.revenue_inr - itr.revenue_prev_inr) / itr.revenue_prev_inr
+        elec_g = (itr.electricity_expense_inr - itr.electricity_expense_prev_inr) / itr.electricity_expense_prev_inr
+        if rev_g >= 0.35 and elec_g <= 0.05:
+            score += 6
+
+    if itr.legal_expense_inr is not None and itr.legal_expense_prev_inr is not None and itr.legal_expense_prev_inr > 0:
+        lg = (itr.legal_expense_inr - itr.legal_expense_prev_inr) / itr.legal_expense_prev_inr
+        if lg >= 0.40:
+            score += 3
 
     # GST reconciliation penalty (2A vs 3B)
     if gst.gstr_2a_itc_inr is not None and gst.gstr_3b_itc_inr is not None:
@@ -577,6 +676,11 @@ def compute_credit_intelligence(
                 "profit_cr": round(_to_cr(itr_profit), 2) if itr_profit is not None else None,
                 "revenue_inr": itr.revenue_inr,
                 "revenue_cr": round(_to_cr(itr.revenue_inr), 2) if itr.revenue_inr is not None else None,
+                "revenue_prev_inr": itr.revenue_prev_inr,
+                "electricity_expense_inr": itr.electricity_expense_inr,
+                "electricity_expense_prev_inr": itr.electricity_expense_prev_inr,
+                "legal_expense_inr": itr.legal_expense_inr,
+                "legal_expense_prev_inr": itr.legal_expense_prev_inr,
             },
             "bank": {
                 "inflow_inr": bank_inflow,
