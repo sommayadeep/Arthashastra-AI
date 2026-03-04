@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from backend_ai_agent import BankingNewsOrchestrator
 from credit_intelligence import compute_credit_intelligence, parse_bank, parse_gst, parse_itr
+from research_intelligence import compute_research_dossier, research_alerts
 
 
 agent = BankingNewsOrchestrator()
@@ -40,6 +41,16 @@ def _analyze_from_files(files, form):
     warnings.extend(w)
 
     intelligence = compute_credit_intelligence(parsed_gst, parsed_itr, parsed_bank, officer_adjustment=officer_adjust)
+    dossier = compute_research_dossier(form.get("company"), form.get("promoters"), form.get("sector"))
+    intelligence["research"] = dossier
+    # Surface MCA/e-Courts signals directly in alerts for quick demo visibility
+    try:
+        intelligence_alerts = intelligence.get("alerts")
+        if isinstance(intelligence_alerts, list):
+            intelligence_alerts.extend(research_alerts(dossier))
+            intelligence["alerts"] = intelligence_alerts
+    except Exception:
+        pass
 
     passthrough = {
         "company": form.get("company") or None,

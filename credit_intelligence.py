@@ -420,7 +420,9 @@ def compute_credit_intelligence(
         denom = max(itr.revenue_inr, gst_turnover)
         variance = abs(itr.revenue_inr - gst_turnover) / denom if denom > 0 else 0.0
         if variance >= 0.25:
-            alerts.append("Material ITR revenue ↔ GST turnover mismatch (review revenue recognition / filing period).")
+            alerts.append(
+                "Material ITR revenue ↔ GST turnover mismatch (possible revenue inflation/deflation or period shifting; review recognition & filing periods)."
+            )
         elif variance >= 0.12:
             alerts.append("Moderate ITR revenue ↔ GST turnover variance observed (timing difference possible).")
 
@@ -431,7 +433,9 @@ def compute_credit_intelligence(
             variance = abs(gst.gstr_3b_itc_inr - gst.gstr_2a_itc_inr) / denom
             pct = int(round(variance * 100))
             if variance >= 0.15:
-                alerts.append(f"GSTR-2A vs GSTR-3B ITC mismatch: {pct}% variance (reconciliation risk).")
+                alerts.append(
+                    f"GSTR-2A vs GSTR-3B ITC mismatch: {pct}% variance (possible ITC over-claim / synthetic invoicing; circular-trading vector)."
+                )
             elif variance >= 0.07:
                 alerts.append(f"Moderate GSTR-2A vs GSTR-3B ITC variance: {pct}% (review timing/eligibility).")
 
@@ -441,7 +445,9 @@ def compute_credit_intelligence(
             variance = abs(gst.gstr_3b_taxable_inr - gst.gstr_2a_taxable_inr) / denom
             pct = int(round(variance * 100))
             if variance >= 0.20:
-                alerts.append(f"GSTR-2A vs GSTR-3B taxable value mismatch: {pct}% (reconciliation risk).")
+                alerts.append(
+                    f"GSTR-2A vs GSTR-3B taxable value mismatch: {pct}% (possible invoice mismatch / reporting variance)."
+                )
 
     if bank.avg_balance_inr is not None and bank.min_balance_inr is not None:
         if bank.min_balance_inr <= 0:

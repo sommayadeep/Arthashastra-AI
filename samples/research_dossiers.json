@@ -1,0 +1,74 @@
+{
+  "companies": {
+    "Maurya Infra Pvt Ltd": {
+      "mca": {
+        "cin": "U45201DL2014PTC123456",
+        "status": "Active",
+        "roc": "ROC Delhi",
+        "last_filing_date": "2025-09-30",
+        "directors": [
+          { "name": "Rajesh Gupta", "din": "01234567", "role": "Director" },
+          { "name": "Anita Gupta", "din": "07654321", "role": "Director" }
+        ],
+        "charges": {
+          "active_count": 1,
+          "active_amount_inr": 85000000,
+          "lender": "State Bank of India"
+        },
+        "flags": [
+          "Active charge registered (secured borrowing).",
+          "AOC-4 filing delay observed (review ROC compliance)."
+        ]
+      },
+      "ecourts": {
+        "ongoing_count": 1,
+        "closed_count": 2,
+        "cases": [
+          {
+            "court": "Delhi District Court",
+            "case_no": "CS/1234/2025",
+            "subject": "Commercial Suit",
+            "status": "Pending",
+            "last_hearing": "2026-02-10"
+          },
+          {
+            "court": "NCLT Delhi",
+            "case_no": "IB-456/2024",
+            "subject": "Insolvency (Operational Creditor)",
+            "status": "Disposed",
+            "last_hearing": "2025-08-03"
+          },
+          {
+            "court": "Delhi District Court",
+            "case_no": "S.138/789/2024",
+            "subject": "NI Act 138 (Cheque Bounce)",
+            "status": "Disposed",
+            "last_hearing": "2025-04-21"
+          }
+        ],
+        "highlights": [
+          "1 pending commercial suit (last hearing: 10 Feb 2026).",
+          "Historical NI Act 138 matter disposed (reputational marker)."
+        ]
+      }
+    }
+  },
+  "promoters": {
+    "Rajesh Gupta": {
+      "mca": {
+        "directorships": 3,
+        "flags": [
+          "Cross-directorships detected (review related-party exposure)."
+        ]
+      },
+      "ecourts": {
+        "ongoing_count": 0,
+        "closed_count": 1,
+        "highlights": [
+          "1 historical civil dispute disposed."
+        ]
+      }
+    }
+  }
+}
+

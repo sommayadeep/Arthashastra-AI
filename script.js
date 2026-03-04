@@ -86,6 +86,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.round((Math.abs(gstInr - bankInr) / denom) * 100);
   }
 
+  function computeGSTReconciliationVariancePct(extracted) {
+    const itc2a = extracted?.gst?.gstr_2a_itc_inr;
+    const itc3b = extracted?.gst?.gstr_3b_itc_inr;
+    if (itc2a == null || itc3b == null) return null;
+    const a = Number(itc2a);
+    const b = Number(itc3b);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    const denom = Math.max(a, b, 0);
+    if (denom <= 0) return null;
+    return Math.round((Math.abs(b - a) / denom) * 100);
+  }
+
   function computeVolatilityScore(extracted) {
     // Proxy using balance stress: low min vs avg implies volatility.
     const avg = extracted?.bank?.avg_balance_inr;
@@ -373,6 +385,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return { level: 'Low', color: '#27ae60' };
   }
 
+  function severityForGSTReconciliation(variancePct) {
+    if (variancePct == null) return { level: 'Low', color: '#27ae60' };
+    if (variancePct >= 15) return { level: 'High', color: '#8B2942' };
+    if (variancePct >= 7) return { level: 'Medium', color: '#9E7C2F' };
+    return { level: 'Low', color: '#27ae60' };
+  }
+
   function severityForBounces(count) {
     const n = Number(count || 0);
     if (n >= 3) return { level: 'High', color: '#8B2942' };
@@ -394,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildInstitutionalSummary({ company, sector, extracted, metrics }) {
     const variance = computeMismatchVariancePct(extracted);
+    const gstRecon = computeGSTReconciliationVariancePct(extracted);
     const bounces = Number(extracted?.bank?.bounce_count || 0);
     const dscr = Number(metrics?.dscr || 0);
     const lev = Number(metrics?.leverage || 0);
@@ -412,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : 'overall credit posture remains serviceable under stable economic conditions';
 
     const varianceText = variance != null ? `${variance}% GST–Bank variance` : 'GST–Bank variance';
+    const reconText = gstRecon != null ? `${gstRecon}% GSTR-2A↔3B variance` : null;
     const dscrNum = dscr ? `${dscr.toFixed(2)}x` : '—';
 
     const baseRisk = computeRiskFromExplainability(extracted, 0);
@@ -423,7 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const stance = baseRisk.status || 'Moderate';
     const decision = outcome.status || 'CONDITIONAL HOLD';
 
-    return `While DSCR (${dscrNum}) indicates strong servicing capacity, ${varianceText} and ${behavioral} introduce reporting integrity concerns. Underwriting stance remains ${stance} risk with ${decision} pending reconciliation validation.`;
+    const comp = reconText ? `${varianceText} + ${reconText}` : varianceText;
+    return `While DSCR (${dscrNum}) indicates strong servicing capacity, ${comp} and ${behavioral} introduce reporting integrity concerns. Underwriting stance remains ${stance} risk with ${decision} pending reconciliation validation.`;
   }
 
   function appendChat(role, text) {
@@ -477,6 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const ai = c?.ai || {};
     const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
     const risk = ai.risk || {};
+    const research = ai.research || {};
+    const mca = research?.mca || null;
+    const ec = research?.ecourts || null;
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -519,6 +544,37 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="k">AI Credit Summary</div>
     <div class="muted" style="margin-top:8px">${escapeHtml(ai.credit_summary || '—')}</div>
   </div>
+  ${(mca || ec) ? `
+  <div class="card" style="margin-top:14px">
+    <div class="k">External Research Sources</div>
+    <div class="muted" style="margin-top:8px">MCA filings • e-Courts / NCLT</div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="k">MCA Filings</div>
+      <div class="muted" style="margin-top:8px">
+        CIN: ${escapeHtml(mca?.cin || '—')}<br>
+        Status: ${escapeHtml(mca?.status || '—')}<br>
+        Last filing: ${escapeHtml(mca?.last_filing_date || '—')}
+      </div>
+      <div class="muted" style="margin-top:10px">
+        Active charges: ${escapeHtml(mca?.charges?.active_count ?? '—')}
+      </div>
+      ${Array.isArray(mca?.flags) && mca.flags.length ? `<ul>${mca.flags.slice(0, 3).map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>` : ''}
+    </div>
+    <div class="card">
+      <div class="k">e-Courts / Litigation</div>
+      <div class="muted" style="margin-top:8px">
+        Ongoing: ${escapeHtml(ec?.ongoing_count ?? '—')} • Closed: ${escapeHtml(ec?.closed_count ?? '—')}
+      </div>
+      ${Array.isArray(ec?.highlights) && ec.highlights.length ? `<ul>${ec.highlights.slice(0, 3).map(h => `<li>${escapeHtml(h)}</li>`).join('')}</ul>` : ''}
+      ${Array.isArray(ec?.cases) && ec.cases.length ? `
+        <div class="muted" style="margin-top:10px;font-weight:700">Sample matters:</div>
+        <ul>${ec.cases.slice(0, 3).map(cs => `<li>${escapeHtml(cs?.court || '—')}: ${escapeHtml(cs?.case_no || '—')} (${escapeHtml(cs?.status || '—')})</li>`).join('')}</ul>
+      ` : ''}
+    </div>
+  </div>
+  ` : ''}
   <div class="card" style="margin-top:14px">
     <div class="k">Dharma Risk Alerts</div>
     ${alerts.length ? `<ul>${alerts.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>` : `<div class="muted" style="margin-top:8px">No alerts.</div>`}
@@ -951,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <label for="camMonitoringToggle" style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo); cursor:pointer;">Enable Post-Sanction Monitoring</label>
                 </div>
                 <div id="camMonitoringInfo" style="display:none; margin-top: 10px; font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); line-height: 1.6;">
-                  Monitoring signals: GST filing delays · Bounce frequency · Cash-flow volatility.
+                  Monitoring signals: GSTR-2A↔3B reconciliation · MCA filings/charges · e-Courts litigation updates · Bounce frequency · Cash-flow volatility.
                 </div>
               </li>
             </ul>
@@ -1384,6 +1440,12 @@ document.addEventListener('DOMContentLoaded', () => {
             text: 'GST–Bank inflow mismatch',
             detail: `${variance}% variance (reported vs observed inflows)`,
           } : null;
+          const gstReconPct = computeGSTReconciliationVariancePct(baseExtracted);
+          const gstRecon = gstReconPct != null ? {
+            severity: severityForGSTReconciliation(gstReconPct),
+            text: 'GSTR-2A ↔ 3B reconciliation',
+            detail: `${gstReconPct}% ITC variance (invoice/ITC integrity check)`,
+          } : null;
           const bounce = {
             severity: severityForBounces(baseExtracted?.bank?.bounce_count),
             text: 'Cheque return events',
@@ -1392,6 +1454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	          const derived = [];
 	          if (mismatch) derived.push(mismatch);
+	          if (gstRecon) derived.push(gstRecon);
 	          derived.push(bounce);
 
 	          const derivedHtml = derived.map(item => `
