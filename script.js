@@ -2307,7 +2307,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 6. VIEW CASE POPULATION ENGINE ---
   // This logic runs if we are on the view-case.html page
-  const viewId = new URLSearchParams(window.location.search).get('id');
+  let viewId = new URLSearchParams(window.location.search).get('id');
+  if (!viewId || !String(viewId).trim()) {
+    const h = (window.location.hash || '').trim();
+    if (h && h.startsWith('#') && h.length > 1) viewId = h;
+  }
   if (viewId) {
     const archived = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
     const c = archived.find(item => item.id === viewId) || legacyRecords[viewId];
