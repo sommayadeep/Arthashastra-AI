@@ -306,8 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Metrics (Cr) – use case metrics when present, else use extracted proxies
     const ebitdaCr = Number(m.ebitda ?? ex?.itr?.profit_cr ?? 0);
     const debtCr = Number(m.debtService ?? ex?.bank?.debt_service_cr ?? 0);
-    const facilityCr = Number(m.facility ?? ex?.gst?.turnover_cr ? (ex.gst.turnover_cr * 0.08) : 0);
-    const networthCr = Number(m.networth ?? ex?.bank?.inflow_cr ? (ex.bank.inflow_cr * 0.25) : 0);
+    const facilityCr = Number(m.facility ?? (ex?.gst?.turnover_cr != null ? (ex.gst.turnover_cr * 0.08) : 0));
+    const networthCr = Number(m.networth ?? (ex?.bank?.inflow_cr != null ? (ex.bank.inflow_cr * 0.25) : 0));
 
     const dscr = debtCr > 0 ? (ebitdaCr / debtCr) : 0;
     const leverage = networthCr > 0 ? (facilityCr / networthCr) : 0;
@@ -497,6 +497,470 @@ document.addEventListener('DOMContentLoaded', () => {
     const decision = outcome.status || 'CONDITIONAL HOLD';
 
     return `While DSCR (${dscrNum}) indicates strong servicing capacity, ${varianceText} and ${behavioral} introduce reporting integrity concerns. Underwriting stance remains ${stance} risk with ${decision} pending reconciliation validation.`;
+  }
+
+  function formatCr(n, fallback = '—') {
+    if (n == null || Number.isNaN(Number(n))) return fallback;
+    return formatINR(Math.round(Number(n) * 100) / 100);
+  }
+
+  function buildCommitteeMitigants({ decision, coveragePercent, extracted }) {
+    const items = [];
+    if (coveragePercent >= 100) items.push('All three core data packs are available for triangulation.');
+    if (Number(decision?.metrics?.dscr || 0) >= 1.5) items.push(`Debt servicing appears acceptable at ${decision.metrics.dscr.toFixed(2)}x DSCR.`);
+    if (Number(extracted?.bank?.bounce_count || 0) === 0) items.push('No cheque return events were observed in the uploaded bank statement window.');
+    if (Number(extracted?.itr?.profit_cr || 0) > 0) items.push(`ITR profitability remains positive at ${formatCr(extracted.itr.profit_cr)}.`);
+    if (Number(extracted?.bank?.avg_balance_inr || 0) > 0 && Number(extracted?.bank?.min_balance_inr || 0) > 0) {
+      items.push('Average and minimum balances stay positive, improving liquidity confidence.');
+    }
+    return items.slice(0, 3);
+  }
+
+  function buildCommitteeCovenants({ decision, extracted, requestedFacilityCr }) {
+    const covenants = [];
+    const variance = computeMismatchVariancePct(extracted);
+    if (variance != null && variance >= 12) covenants.push('Submit GST-to-bank reconciliation before disbursement and maintain variance below 12% thereafter.');
+    if (Number(extracted?.bank?.bounce_count || 0) > 0) covenants.push('Zero cheque return events over the next two review cycles, failing which the case moves to manual review.');
+    covenants.push(`Maintain minimum DSCR above 1.20x with quarterly management certification.`);
+    if ((decision?.risk?.status || '') !== 'Low') covenants.push('Monthly bank statement and GST filing monitoring for the first two quarters.');
+    if (requestedFacilityCr > 0) covenants.push(`Drawdown to remain within the approved cap and sub-limit structure around the requested ₹ ${requestedFacilityCr.toFixed(2)} Cr facility.`);
+    return [...new Set(covenants)].slice(0, 3);
+  }
+
+  function computeRecommendedSanctionCr({ decision, requestedFacilityCr, collateralCr }) {
+    const requested = Number(requestedFacilityCr || decision?.metrics?.facilityCr || 0);
+    const collateral = Number(collateralCr || 0);
+    if (!requested || decision?.outcome?.status !== 'APPROVED') return 0;
+    const baseFactor = decision?.risk?.status === 'Low' ? 0.95 : 0.82;
+    let sanction = requested * baseFactor;
+    if (collateral > 0) sanction = Math.min(sanction, collateral * 0.75);
+    return Math.max(0, Math.round(sanction * 100) / 100);
+  }
+
+  function buildTraceabilityRows({ extracted, decision, coveragePercent }) {
+    const variance = computeMismatchVariancePct(extracted);
+    const rows = [
+      {
+        source: 'GST',
+        label: 'Reported turnover',
+        value: formatCr(extracted?.gst?.turnover_cr),
+        detail: 'Defines operating scale and anchors the reconciliation benchmark.'
+      },
+      {
+        source: 'ITR',
+        label: 'Reported profit',
+        value: formatCr(extracted?.itr?.profit_cr),
+        detail: 'Supports the earnings view that feeds repayment capacity.'
+      },
+      {
+        source: 'Bank',
+        label: 'Observed inflow',
+        value: formatCr(extracted?.bank?.inflow_cr),
+        detail: 'Cross-checks turnover quality and cash-flow visibility.'
+      },
+      {
+        source: 'Derived',
+        label: 'GST vs bank variance',
+        value: variance != null ? `${variance}%` : 'Not available',
+        detail: variance != null
+          ? `This variance flows into compliance risk and headline alerts.`
+          : 'Variance appears once both GST and bank inflows are available.'
+      },
+      {
+        source: 'Derived',
+        label: 'Behavioral signal',
+        value: `${Number(extracted?.bank?.bounce_count || 0)} returns`,
+        detail: 'Cheque returns directly increase behavioral risk in the score.'
+      },
+      {
+        source: 'Derived',
+        label: 'DSCR and leverage',
+        value: `${decision?.metrics?.dscr ? decision.metrics.dscr.toFixed(2) : '—'}x / ${decision?.metrics?.leverage ? decision.metrics.leverage.toFixed(2) : '—'}x`,
+        detail: 'The final underwriting posture blends cash-flow strength with balance sheet stretch.'
+      },
+      {
+        source: 'Committee',
+        label: 'Final stance',
+        value: `${decision?.outcome?.status || '—'} • ${decision?.risk?.status || '—'} risk`,
+        detail: `${decision?.summary || 'Committee rationale pending.'} Coverage confidence: ${coveragePercent}%.`
+      },
+    ];
+    return rows;
+  }
+
+  const DOC_META = {
+    gst_docs: {
+      title: 'GST Returns',
+      source: 'From GST',
+      empty: 'Upload monthly GST summaries to show turnover, ITC, and filing reconciliation evidence.'
+    },
+    itr_docs: {
+      title: 'Income Tax Returns',
+      source: 'From ITR',
+      empty: 'Upload ITR summaries to surface revenue and profitability support for servicing capacity.'
+    },
+    bank_docs: {
+      title: 'Bank Statements',
+      source: 'From Bank',
+      empty: 'Upload transaction-level bank statements to reveal cash-flow patterns, bounces, and debt servicing.'
+    },
+  };
+
+  const docPreviewState = {};
+
+  function getDocMeta(inputId) {
+    return DOC_META[inputId] || { title: 'Document', source: 'Source', empty: 'Upload a file to populate this panel.' };
+  }
+
+  async function captureFilePreview(input) {
+    if (!input?.id) return;
+    const file = input.files?.[0];
+    if (!file) {
+      delete docPreviewState[input.id];
+      return;
+    }
+
+    try {
+      let text = await file.text();
+      text = (text || '').replace(/\r/g, '').trim();
+      if (file.name.toLowerCase().endsWith('.json')) {
+        try {
+          text = JSON.stringify(JSON.parse(text), null, 2);
+        } catch { }
+      }
+      const lines = text.split('\n').filter(Boolean);
+      const snippet = lines.slice(0, file.name.toLowerCase().endsWith('.csv') ? 4 : 8).join('\n').slice(0, 420) || 'File attached.';
+      docPreviewState[input.id] = {
+        name: file.name,
+        snippet,
+        sizeKb: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      };
+    } catch {
+      docPreviewState[input.id] = {
+        name: file.name,
+        snippet: 'Preview unavailable for this file, but the upload is ready for analysis.',
+        sizeKb: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      };
+    }
+  }
+
+  function buildEvidenceComparisonHtml({ decision, coveragePercent, missingDocs }) {
+    const docCardsHtml = ['gst_docs', 'itr_docs', 'bank_docs'].map((inputId) => {
+      const meta = getDocMeta(inputId);
+      const preview = docPreviewState[inputId];
+      if (!preview) {
+        return `
+          <div class="doc-preview-card">
+            <div class="doc-preview-head">
+              <div>
+                <strong>${escapeHtml(meta.title)}</strong>
+                <div class="doc-preview-meta">${escapeHtml(meta.source)}</div>
+              </div>
+              <span class="surface-kicker" data-tone="watch">Missing</span>
+            </div>
+            <div class="empty-panel">
+              <strong>No file uploaded yet</strong>
+              <p>${escapeHtml(meta.empty)}</p>
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="doc-preview-card">
+          <div class="doc-preview-head">
+            <div>
+              <strong>${escapeHtml(meta.title)}</strong>
+              <div class="doc-preview-meta">${escapeHtml(preview.name)} • ${escapeHtml(preview.sizeKb)}</div>
+            </div>
+            <span class="provenance-badge">${escapeHtml(meta.source)}</span>
+          </div>
+          <div class="code-snippet">${escapeHtml(preview.snippet)}</div>
+        </div>
+      `;
+    }).join('');
+
+    const extracted = decision.extracted || {};
+    const variance = computeMismatchVariancePct(extracted);
+    const extractedRows = [
+      {
+        label: 'Reported GST turnover',
+        badge: 'From GST',
+        value: formatCr(extracted?.gst?.turnover_cr),
+        detail: 'Primary operating scale signal used for reconciliation and facility sizing.'
+      },
+      {
+        label: 'Reported ITR profit',
+        badge: 'From ITR',
+        value: formatCr(extracted?.itr?.profit_cr),
+        detail: 'Supports the quality of earnings view in the committee memo.'
+      },
+      {
+        label: 'Observed bank inflow',
+        badge: 'From Bank',
+        value: formatCr(extracted?.bank?.inflow_cr),
+        detail: 'Cross-checks revenue intensity against actual cash movement.'
+      },
+      {
+        label: 'Debt service proxy',
+        badge: 'From Bank',
+        value: formatCr(extracted?.bank?.debt_service_cr),
+        detail: 'Derived from EMI, loan, and interest debits detected in the statement.'
+      },
+      {
+        label: 'GST-bank variance',
+        badge: 'Derived',
+        value: variance != null ? `${variance}%` : 'Not available',
+        detail: 'This mismatch feeds directly into compliance risk and committee caution.'
+      },
+      {
+        label: 'Bounce / return events',
+        badge: 'From Bank',
+        value: `${Number(extracted?.bank?.bounce_count || 0)}`,
+        detail: 'Behavioral flags raise scrutiny even when aggregate ratios look comfortable.'
+      },
+    ].map((row) => `
+      <div class="metric-row">
+        <div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span class="provenance-badge">${escapeHtml(row.badge)}</span>
+          </div>
+          <p>${escapeHtml(row.detail)}</p>
+        </div>
+        <div class="value">${escapeHtml(row.value)}</div>
+      </div>
+    `).join('');
+
+    const signalTone = decision.confidence >= 85 ? 'strong' : (decision.confidence >= 65 ? 'watch' : 'risk');
+    const missingTags = missingDocs.length
+      ? missingDocs.map((item) => `<span class="confidence-tag">Missing: ${escapeHtml(item)}</span>`).join('')
+      : `<span class="confidence-tag">All core data packs present</span>`;
+
+    return `
+      <div class="evidence-grid">
+        <section class="evidence-surface">
+          <div class="surface-head">
+            <div>
+              <h4>Before vs after AI extraction</h4>
+              <p>The left side shows uploaded evidence exactly as the operator provided it. The right side shows the extracted credit signals judges can trust and audit.</p>
+            </div>
+          </div>
+          <div class="doc-preview-grid">${docCardsHtml}</div>
+        </section>
+        <section class="evidence-surface">
+          <div class="surface-head">
+            <div>
+              <h4>Extracted intelligence</h4>
+              <p>Every metric below carries a provenance tag so the underwriting output feels evidence-based, not black-box.</p>
+            </div>
+            <span class="surface-kicker" data-tone="${signalTone}">Confidence ${decision.confidence}%</span>
+          </div>
+          <div class="confidence-panel">
+            <strong>${decision.confidence >= 85 ? 'Strong signal quality' : (decision.confidence >= 65 ? 'Partial signal quality' : 'Low signal quality')}</strong>
+            <p>Document coverage is ${coveragePercent}%. ${missingDocs.length ? 'The engine is compensating for missing packs, so banker review should stay close to the evidence below.' : 'All core documents are present, which raises confidence in the decision path.'}</p>
+            <div class="confidence-tags">${missingTags}</div>
+          </div>
+          <div class="metric-stack">${extractedRows}</div>
+        </section>
+      </div>
+    `;
+  }
+
+  function buildScenarioComparisonHtml({ baseDecision, stressDecision }) {
+    const riskDelta = Math.round((stressDecision.risk.score - baseDecision.risk.score) * 10) / 10;
+    const pdDelta = Math.round((stressDecision.pd - baseDecision.pd) * 100);
+    const topBase = buildExplainability(baseDecision.extracted).slice().sort((a, b) => b.pct - a.pct)[0];
+    const topStress = buildExplainability(stressDecision.extracted).slice().sort((a, b) => b.pct - a.pct)[0];
+
+    const renderScenarioCard = (title, tone, decision, topDriver) => `
+      <div class="scenario-card" data-tone="${tone}">
+        <div class="surface-head" style="margin-bottom:0;">
+          <div>
+            <h5>${escapeHtml(title)}</h5>
+            <p>${escapeHtml(decision.committeeView)}</p>
+          </div>
+          <div class="decision-status-pill" data-state="${escapeHtml(decision.outcome.status)}">${escapeHtml(decision.outcome.status)}</div>
+        </div>
+        <div class="scenario-kpis">
+          <div class="scenario-kpi">
+            <div class="label">Risk score</div>
+            <div class="value">${escapeHtml(String(decision.risk.score))}</div>
+          </div>
+          <div class="scenario-kpi">
+            <div class="label">6M PD</div>
+            <div class="value">${escapeHtml(String(Math.round(decision.pd * 100)))}%</div>
+          </div>
+          <div class="scenario-kpi">
+            <div class="label">Confidence</div>
+            <div class="value">${escapeHtml(String(decision.confidence))}%</div>
+          </div>
+        </div>
+        <div style="margin-top:14px; color: var(--text-secondary); font-size: 0.86rem; line-height: 1.55; font-weight: 700;">
+          Dominant driver: ${escapeHtml(topDriver ? `${topDriver.label} (${topDriver.pct}%)` : 'Not available')}
+        </div>
+      </div>
+    `;
+
+    return `
+      <section class="comparison-surface" id="camScenarioComparison">
+        <div class="surface-head">
+          <div>
+            <h4>Scenario comparison mode</h4>
+            <p>Judges can compare the base underwriting stance against a stressed environment without toggling away from the memo.</p>
+          </div>
+        </div>
+        <div class="scenario-grid">
+          ${renderScenarioCard('Base case', 'base', baseDecision, topBase)}
+          ${renderScenarioCard('Stress case', 'stress', stressDecision, topStress)}
+        </div>
+        <div class="scenario-delta">
+          Stress increases risk by <strong>${escapeHtml(String(riskDelta))} points</strong> and moves 6-month default signal by <strong>${escapeHtml(String(pdDelta))}%</strong>. This helps the committee visualize resilience before sanctioning.
+        </div>
+      </section>
+    `;
+  }
+
+  function buildMonitoringCards({ decision, stressDecision, extracted, coveragePercent }) {
+    const variance = computeMismatchVariancePct(extracted);
+    const bounceCount = Number(extracted?.bank?.bounce_count || 0);
+    const passThrough = extracted?.bank?.pass_through_ratio != null ? Math.round(extracted.bank.pass_through_ratio * 100) : null;
+    const cards = [
+      {
+        label: 'GST discipline',
+        value: variance != null ? `${variance}% variance` : 'Awaiting variance',
+        tone: variance != null && variance >= 12 ? 'watch' : 'good',
+        detail: variance != null ? 'Review monthly GST-to-bank reconciliation and filing timeliness.' : 'Once GST and bank data are complete, this card tracks reconciliation drift.'
+      },
+      {
+        label: 'Bounce trend',
+        value: `${bounceCount} event${bounceCount === 1 ? '' : 's'}`,
+        tone: bounceCount > 0 ? 'watch' : 'good',
+        detail: 'Monthly cheque return and unpaid debit behaviour should stay inside tolerance.'
+      },
+      {
+        label: 'Cash-flow resilience',
+        value: `${Math.round(stressDecision.pd * 100)}% stressed PD`,
+        tone: stressDecision.pd >= 0.25 ? 'watch' : 'good',
+        detail: 'Use the stressed scenario as an early-warning benchmark for monthly portfolio review.'
+      },
+      {
+        label: 'Compliance pack',
+        value: `${coveragePercent}% complete`,
+        tone: coveragePercent < 100 ? 'watch' : 'good',
+        detail: 'Track whether the borrower continues to supply GST, ITR, and bank packs on time.'
+      },
+    ];
+
+    if (passThrough != null) {
+      cards.push({
+        label: 'Flow churn watch',
+        value: `${passThrough}% pass-through`,
+        tone: passThrough >= 92 ? 'watch' : 'good',
+        detail: 'High pass-through can indicate circularity or weak cash retention if it persists.'
+      });
+    }
+
+    return cards.slice(0, 4).map((card) => `
+      <div class="monitor-card">
+        <div class="monitor-card-head">
+          <div class="monitor-label">${escapeHtml(card.label)}</div>
+          <div class="monitor-pill" data-tone="${escapeHtml(card.tone)}">${card.tone === 'good' ? 'Track' : 'Watch'}</div>
+        </div>
+        <div class="monitor-value">${escapeHtml(card.value)}</div>
+        <p>${escapeHtml(card.detail)}</p>
+      </div>
+    `).join('');
+  }
+
+  function buildBankerActions({ decision, missingDocs, extracted, requestedFacilityCr, collateralCr }) {
+    const variance = computeMismatchVariancePct(extracted);
+    const bounceCount = Number(extracted?.bank?.bounce_count || 0);
+    const actions = [];
+
+    if (missingDocs.length) {
+      actions.push({
+        title: 'Collect the missing core data packs',
+        detail: `Ask the borrower for ${missingDocs.join(', ')} before the file reaches final committee approval.`
+      });
+    }
+    if (variance != null && variance >= 12) {
+      actions.push({
+        title: 'Reconcile GST and bank variance',
+        detail: `Variance is ${variance}%. Obtain a filing-period bridge or operating/non-operating credit explanation from finance.`
+      });
+    }
+    if (bounceCount > 0) {
+      actions.push({
+        title: 'Review bank exceptions and return events',
+        detail: `There are ${bounceCount} cheque or debit return events. Ask for root cause and evidence of correction.`
+      });
+    }
+    if (requestedFacilityCr > 0 && collateralCr > 0 && collateralCr < requestedFacilityCr * 1.15) {
+      actions.push({
+        title: 'Tighten collateral or drawdown limits',
+        detail: 'Security cover is not comfortably above the requested facility. Consider tighter LTV and phased drawdowns.'
+      });
+    }
+    if (decision.outcome.status !== 'APPROVED') {
+      actions.push({
+        title: 'Escalate for manual credit review',
+        detail: 'Use the decision card, evidence comparison, and scenario panel to drive targeted committee questions.'
+      });
+    } else {
+      actions.push({
+        title: 'Prepare the monitoring pack at sanction',
+        detail: 'Lock in monthly GST, bank statement, and promoter update requirements at the time of approval.'
+      });
+    }
+
+    return actions.slice(0, 4);
+  }
+
+  function buildActionsHtml(actions) {
+    return actions.map((action, idx) => `
+      <div class="action-item">
+        <div class="action-index">${idx + 1}</div>
+        <div>
+          <strong>${escapeHtml(action.title)}</strong>
+          <p>${escapeHtml(action.detail)}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function computeTrendMeta(record) {
+    const status = String(record?.status || '').toUpperCase();
+    const grade = String(record?.grade || '').toUpperCase();
+    if (status.includes('APPROVED') && grade.startsWith('A')) return { label: 'Improving', tone: 'good' };
+    if (status.includes('APPROVED')) return { label: 'Stable', tone: 'good' };
+    if (status.includes('PENDING') || status.includes('HOLD')) return { label: 'Watchlist', tone: 'watch' };
+    return { label: 'Watchlist', tone: 'risk' };
+  }
+
+  function ledgerStatusGroup(status) {
+    const normalized = String(status || '').trim().toUpperCase();
+    if (!normalized) return '';
+    if (normalized.includes('APPROVED')) return 'Approved';
+    if (normalized.includes('PENDING') || normalized.includes('HOLD') || normalized.includes('REVIEW')) return 'Pending';
+    if (normalized.includes('REJECT')) return 'Rejected';
+    return normalized;
+  }
+
+  function formatLedgerStatus(status) {
+    const value = String(status || '').trim();
+    if (!value) return 'Unknown';
+    return value
+      .toLowerCase()
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  function truncateText(text, limit = 160) {
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!value) return '';
+    if (value.length <= limit) return value;
+    return `${value.slice(0, Math.max(0, limit - 1)).trim()}…`;
   }
 
   function appendChat(role, text) {
@@ -765,9 +1229,173 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function setFieldValue(selector, value) {
+    const el = q(selector);
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  async function attachSampleFile(inputId, samplePath, filename, mimeType = 'application/octet-stream') {
+    const input = q(`#${inputId}`);
+    if (!input) return;
+    const resp = await fetch(samplePath, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`Could not load ${samplePath}`);
+    const blob = await resp.blob();
+    const file = new File([blob], filename, { type: mimeType });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  async function loadSampleCase() {
+    setFieldValue('#company', 'Pravartak Engineering Pvt Ltd');
+    setFieldValue('#promoters', 'Aarav Mehta & Family');
+    setFieldValue('#sector', 'Precision Engineering / Mid-Market Manufacturing');
+    setFieldValue('#primary_insights', 'Factory visit indicates active dispatches, orderly inventory storage, and stable promoter involvement. Management highlighted a recent working capital stretch due to customer payment cycles, but operations remain active.');
+    setFieldValue('#adjust', '1');
+    if (adjustLabel) adjustLabel.textContent = '1';
+
+    await Promise.all([
+      attachSampleFile('gst_docs', 'samples/gst_returns_12m.json', 'gst_returns_12m.json', 'application/json'),
+      attachSampleFile('itr_docs', 'samples/itr_3y.json', 'itr_3y.json', 'application/json'),
+      attachSampleFile('bank_docs', 'samples/bank_statement_12m.csv', 'bank_statement_12m.csv', 'text/csv'),
+    ]);
+    await Promise.all(['gst_docs', 'itr_docs', 'bank_docs'].map((inputId) => captureFilePreview(q(`#${inputId}`))));
+
+    window.latestAI = null;
+    if (camOutput) {
+      camOutput.classList.add('hidden');
+      camOutput.innerHTML = '';
+    }
+
+    updateWorkspaceInsights();
+  }
+
+  function dismissDemoStory(overlay, { remember = false, seen = false } = {}) {
+    if (seen) localStorage.setItem('arthashastra_demo_story_seen', 'true');
+    if (remember) localStorage.setItem('arthashastra_demo_story_dismissed', 'true');
+    if (overlay?.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function initDemoStoryMode() {
+    if (!q('#newCaseForm')) return;
+    if (localStorage.getItem('arthashastra_demo_story_dismissed') === 'true') return;
+    if (localStorage.getItem('arthashastra_demo_story_seen') === 'true') return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'demo-story-overlay';
+    overlay.innerHTML = `
+      <div class="demo-story-card" role="dialog" aria-modal="true" aria-labelledby="demoStoryTitle">
+        <div class="surface-kicker" data-tone="strong">Demo story mode</div>
+        <h3 id="demoStoryTitle">Run a 60-second judge-ready walkthrough</h3>
+        <p>This guided setup loads a polished sample borrower, reveals the evidence trail, and tees up the committee memo so the demo starts fast and feels intentional.</p>
+        <div class="story-steps">
+          <div class="story-step">
+            <div class="step-num">1</div>
+            <div>
+              <strong>Load a complete sample case</strong>
+              <p>Borrower details and the three structured evidence packs are attached automatically.</p>
+            </div>
+          </div>
+          <div class="story-step">
+            <div class="step-num">2</div>
+            <div>
+              <strong>Run Arthashastra AI Auto-Extract</strong>
+              <p>The model populates core signals from GST, ITR, and bank evidence for the committee path.</p>
+            </div>
+          </div>
+          <div class="story-step">
+            <div class="step-num">3</div>
+            <div>
+              <strong>Generate the memo and compare scenarios</strong>
+              <p>The CAM now shows evidence traceability, base vs stress, monitoring, and banker actions in one flow.</p>
+            </div>
+          </div>
+        </div>
+        <div class="story-actions">
+          <span class="story-muted">Tip: use this mode before opening the project to judges for the smoothest narrative.</span>
+          <div style="display:flex; flex-wrap:wrap; gap:12px;">
+            <button type="button" class="btn btn-primary" data-demo-action="start">Start demo</button>
+            <button type="button" class="btn" data-demo-action="skip" style="background: transparent; color: var(--imperial-indigo); border: 2px solid var(--imperial-indigo);">Skip for now</button>
+            <button type="button" class="btn" data-demo-action="never" style="background: transparent; color: var(--heading-dark); border: 2px solid var(--antique-gold);">Don't show again</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', async (event) => {
+      const action = event.target.closest('[data-demo-action]')?.dataset.demoAction;
+      if (!action) return;
+
+      if (action === 'start') {
+        dismissDemoStory(overlay, { seen: true });
+        try {
+          await loadSampleCase();
+          q('#aiExtractBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          notify({
+            title: 'Demo mode is ready',
+            message: 'The sample borrower is loaded. Run Auto-Extract, then generate the CAM for the full judge walkthrough.',
+            tone: 'success',
+            timeoutMs: 5200,
+          });
+        } catch (err) {
+          console.error('Demo story sample load failed', err);
+          notify({
+            title: 'Demo mode needs localhost',
+            message: 'The sample assets could not be loaded. Run the project on localhost and retry the guided walkthrough.',
+            tone: 'warning',
+            timeoutMs: 6200,
+          });
+        }
+        return;
+      }
+
+      if (action === 'skip') {
+        dismissDemoStory(overlay, { seen: true });
+        return;
+      }
+
+      dismissDemoStory(overlay, { seen: true, remember: true });
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  const loadSampleCaseBtn = q('#loadSampleCaseBtn');
+  if (loadSampleCaseBtn) {
+    loadSampleCaseBtn.addEventListener('click', async () => {
+      const originalText = loadSampleCaseBtn.textContent;
+      loadSampleCaseBtn.disabled = true;
+      loadSampleCaseBtn.textContent = 'Loading demo...';
+      try {
+        await loadSampleCase();
+        notify({
+          title: 'Demo case loaded',
+          message: 'Sample borrower details and structured files are ready. Run Auto-Extract for the full committee walkthrough.',
+          tone: 'success',
+          timeoutMs: 5200,
+        });
+      } catch (err) {
+        console.error('Sample case load failed', err);
+        notify({
+          title: 'Demo load failed',
+          message: 'The sample assets could not be loaded. Run the project from localhost and retry.',
+          tone: 'error',
+          timeoutMs: 6200,
+        });
+      } finally {
+        loadSampleCaseBtn.disabled = false;
+        loadSampleCaseBtn.textContent = originalText;
+      }
+    });
+  }
+
   const fileInputs = document.querySelectorAll('input[type="file"]');
   fileInputs.forEach(input => {
-    input.addEventListener('change', (e) => {
+    input.addEventListener('change', async (e) => {
       const parent = e.target.closest('.upload-item') || e.target.parentElement;
       // Robustly find the button: look for <button>, <label>, or .btn class
       let btn = parent ? parent.querySelector('button, .btn, label') : e.target.nextElementSibling;
@@ -803,9 +1431,12 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
+      await captureFilePreview(e.target);
       updateWorkspaceInsights();
     });
   });
+
+  initDemoStoryMode();
 
   ['#company', '#sector', '#promoters', '#primary_insights', '#ebitda', '#debtService', '#networth', '#facility', '#collateral']
     .forEach((selector) => {
@@ -1097,6 +1728,80 @@ document.addEventListener('DOMContentLoaded', () => {
         </li>
       `).join('');
 
+        const ai = window.latestAI || {};
+        const inputMetrics = {
+          ebitda: parseAmountToCr(q('#ebitda')?.value),
+          debtService: parseAmountToCr(q('#debtService')?.value),
+          facility: parseAmountToCr(q('#facility')?.value),
+          networth: parseAmountToCr(q('#networth')?.value),
+        };
+        const collateralCr = parseAmountToCr(q('#collateral')?.value);
+        const decision = computeCoreDecision({
+          metrics: inputMetrics,
+          extracted: ai.extracted || {},
+          officerAdjust: data.adjust,
+          stressOn: false,
+          warnings: ai.warnings || null,
+          docCoveragePercent: coveragePercent,
+        });
+        const requestedFacilityCr = Number(inputMetrics.facility ?? decision.metrics.facilityCr ?? 0);
+        const sanctionCr = computeRecommendedSanctionCr({ decision, requestedFacilityCr, collateralCr });
+        const sanctionDisplay = decision.outcome.status === 'APPROVED' ? formatCr(sanctionCr) : 'Hold pending validation';
+        const topDrivers = buildExplainability(decision.extracted)
+          .slice()
+          .sort((a, b) => b.pct - a.pct)
+          .slice(0, 3)
+          .map((item) => `${item.label} (${item.pct}%)`);
+        const mitigants = buildCommitteeMitigants({ decision, coveragePercent, extracted: decision.extracted });
+        const covenants = buildCommitteeCovenants({ decision, extracted: decision.extracted, requestedFacilityCr });
+        const traceRows = buildTraceabilityRows({ extracted: decision.extracted, decision, coveragePercent });
+        const stressDecision = computeCoreDecision({
+          metrics: inputMetrics,
+          extracted: ai.extracted || {},
+          officerAdjust: data.adjust,
+          stressOn: true,
+          warnings: ai.warnings || null,
+          docCoveragePercent: coveragePercent,
+        });
+        const evidenceHtml = buildEvidenceComparisonHtml({ decision, coveragePercent, missingDocs });
+        const scenarioHtml = buildScenarioComparisonHtml({ baseDecision: decision, stressDecision });
+        const monitoringHtml = buildMonitoringCards({
+          decision,
+          stressDecision,
+          extracted: decision.extracted,
+          coveragePercent,
+        });
+        const bankerActions = buildBankerActions({
+          decision,
+          missingDocs,
+          extracted: decision.extracted,
+          requestedFacilityCr,
+          collateralCr,
+        });
+        const bankerActionsHtml = buildActionsHtml(bankerActions);
+
+        const committeeDriversHtml = topDrivers.length
+          ? topDrivers.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+          : '<li>Key risk drivers will appear once AI extraction or financial inputs are available.</li>';
+        const mitigantsHtml = mitigants.length
+          ? mitigants.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+          : '<li>Add more verified inputs to surface positive mitigants.</li>';
+        const covenantsHtml = covenants.length
+          ? covenants.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+          : '<li>Standard monitoring covenants apply.</li>';
+        const traceabilityHtml = traceRows.map((row) => `
+          <div class="traceability-row">
+            <div class="traceability-pill">${escapeHtml(row.source)}</div>
+            <div class="traceability-body">
+              <div class="traceability-title">
+                <strong>${escapeHtml(row.label)}</strong>
+                <span class="traceability-value">${escapeHtml(row.value)}</span>
+              </div>
+              <p>${escapeHtml(row.detail)}</p>
+            </div>
+          </div>
+        `).join('');
+
       // Content Injection with Ancient Bharat / Imperial Indigo theme
       // IMPORTANT: Use textContent for user-provided data to prevent XSS vulnerabilities.
         camOutput.innerHTML = `
@@ -1109,8 +1814,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-size: 0.7rem; font-weight: 800; color: var(--imperial-indigo); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 2px;">Institutional Grade</div>
             <div class="risk-tag ${riskClass}" style="font-size: 1.6rem; padding: 10px 22px;">${grade}</div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">Coverage: ${coveragePercent}%</div>
-            <button id="camStressBtn" class="btn"
-              style="margin-top: 12px; padding: 10px 12px; border: 2px solid var(--imperial-indigo); background: transparent; color: var(--imperial-indigo); white-space: nowrap;">Simulate Stress Scenario</button>
+            <button id="camScenarioBtn" class="btn"
+              style="margin-top: 12px; padding: 10px 12px; border: 2px solid var(--imperial-indigo); background: transparent; color: var(--imperial-indigo); white-space: nowrap;">Jump to Base vs Stress</button>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 50px;">
@@ -1133,12 +1838,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <li style="margin-top: 25px; font-size: 0.95rem; padding-top: 15px; border-top: 1px dashed var(--antique-gold);">
                 <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Recommendation</span> <br>
                 <span style="color:${missingDocs.length === 0 ? '#1B4965' : '#8B2942'}; font-weight:800; font-size: 1.05rem;">${recommendation}</span>
-                <div style="margin-top: 12px; display:flex; align-items:center; gap: 10px;">
-                  <input type="checkbox" id="camMonitoringToggle" style="transform: scale(1.05); accent-color: var(--antique-gold);">
-                  <label for="camMonitoringToggle" style="font-size: 0.85rem; font-weight: 900; color: var(--imperial-indigo); cursor:pointer;">Enable Post-Sanction Monitoring</label>
-                </div>
-                <div id="camMonitoringInfo" style="display:none; margin-top: 10px; font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); line-height: 1.6;">
-                  Monitoring signals: GST filing delays · Bounce frequency · Cash-flow volatility.
+                <div style="margin-top: 12px; font-size: 0.85rem; font-weight: 800; color: var(--heading-dark); line-height: 1.6;">
+                  Monitoring triggers, banker actions, and the stress comparison are generated below for a one-screen committee review.
                 </div>
               </li>
             </ul>
@@ -1172,6 +1873,77 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </div>
+        <div class="cam-insight-grid">
+          <section class="decision-surface">
+            <div class="surface-head">
+              <div>
+                <h4>Committee decision card</h4>
+                <p>${escapeHtml(decision.committeeView)}</p>
+              </div>
+              <div class="decision-status-pill" data-state="${escapeHtml(decision.outcome.status)}">${escapeHtml(decision.outcome.status)}</div>
+            </div>
+            <div class="decision-metric-grid">
+              <div class="decision-metric">
+                <div class="label">Recommended sanction</div>
+                <div class="value">${escapeHtml(sanctionDisplay)}</div>
+              </div>
+              <div class="decision-metric">
+                <div class="label">Decision confidence</div>
+                <div class="value">${escapeHtml(String(decision.confidence))}%</div>
+              </div>
+              <div class="decision-metric">
+                <div class="label">6M default signal</div>
+                <div class="value">${escapeHtml(String(Math.round(decision.pd * 100)))}%</div>
+              </div>
+            </div>
+            <div class="decision-summary">${escapeHtml(decision.summary)}</div>
+            <div class="decision-columns">
+              <div class="decision-list-block">
+                <h5>Top risk drivers</h5>
+                <ul class="decision-list">${committeeDriversHtml}</ul>
+              </div>
+              <div class="decision-list-block">
+                <h5>Mitigants</h5>
+                <ul class="decision-list">${mitigantsHtml}</ul>
+              </div>
+              <div class="decision-list-block">
+                <h5>Recommended covenants</h5>
+                <ul class="decision-list">${covenantsHtml}</ul>
+              </div>
+            </div>
+          </section>
+          <section class="traceability-surface">
+            <div class="surface-head">
+              <div>
+                <h4>Source-to-decision traceability</h4>
+                <p>Each major conclusion below maps a document signal or derived underwriting metric to the final committee stance.</p>
+              </div>
+            </div>
+            <div class="traceability-list">${traceabilityHtml}</div>
+          </section>
+        </div>
+        ${evidenceHtml}
+        ${scenarioHtml}
+        <div class="supplementary-grid">
+          <section class="monitoring-surface">
+            <div class="surface-head">
+              <div>
+                <h4>Monitoring dashboard</h4>
+                <p>Once the facility is sanctioned, these are the monthly indicators the relationship team should watch first.</p>
+              </div>
+            </div>
+            <div class="monitoring-grid">${monitoringHtml}</div>
+          </section>
+          <section class="actions-surface">
+            <div class="surface-head">
+              <div>
+                <h4>Recommended banker actions</h4>
+                <p>These next steps turn the AI output into an execution plan for underwriting, sanction, and post-approval follow-through.</p>
+              </div>
+            </div>
+            <div class="action-list">${bankerActionsHtml}</div>
+          </section>
+        </div>
         <div style="margin-top: 50px; text-align: right; border-top: 2px solid var(--antique-gold); padding-top: 30px; display: flex; justify-content: flex-end; gap: 20px;">
           <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--imperial-indigo); color: var(--imperial-indigo);" onclick="window.print()">Print Documentation Memo</button>
           <button class="btn btn-outline" style="padding: 14px 30px; border-color: var(--antique-gold); color: var(--heading-dark);" onclick="window.downloadLatestAIReport()">Download AI Report</button>
@@ -1196,21 +1968,31 @@ document.addEventListener('DOMContentLoaded', () => {
           docs: data.docs,
           coveragePercent: coveragePercent,
           score: score,
-          ai: window.latestAI || null
+          ai: window.latestAI || null,
+          decision,
+          metrics: {
+            ebitda: inputMetrics.ebitda,
+            debtService: inputMetrics.debtService,
+            facility: inputMetrics.facility,
+            networth: inputMetrics.networth,
+            collateral: collateralCr,
+            sanction: sanctionCr,
+            approvedAmount: sanctionCr,
+          }
         };
 
       // Populate AI panel from latest analysis (if available)
-        const ai = window.latestAI || {};
-        if (ai?.risk?.status && q('#cam-risk-status')) {
-          q('#cam-risk-status').textContent = ai.risk.status;
-          q('#cam-risk-status').style.color = riskStatusColor(ai.risk.status);
+        const primaryRisk = decision.risk;
+        if (primaryRisk?.status && q('#cam-risk-status')) {
+          q('#cam-risk-status').textContent = primaryRisk.status;
+          q('#cam-risk-status').style.color = riskStatusColor(primaryRisk.status);
         }
-        if (ai?.risk?.score != null && q('#cam-risk-score')) {
-          q('#cam-risk-score').textContent = `Risk score: ${ai.risk.score}`;
+        if (primaryRisk?.score != null && q('#cam-risk-score')) {
+          q('#cam-risk-score').textContent = `Risk score: ${primaryRisk.score}`;
         }
-        if (q('#cam-ai-summary')) q('#cam-ai-summary').textContent = ai.credit_summary || '—';
-        if (q('#cam-pd-line') && ai?.risk?.score != null) {
-          const pd = computePD(ai.risk.score);
+        if (q('#cam-ai-summary')) q('#cam-ai-summary').textContent = ai.credit_summary || decision.summary || '—';
+        if (q('#cam-pd-line') && primaryRisk?.score != null) {
+          const pd = decision.pd;
           q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(pd * 100)}%`;
         }
         if (q('#cam-alert-count')) q('#cam-alert-count').textContent = `${(ai.alerts || []).length} Alerts`;
@@ -1238,30 +2020,12 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
-      // Monitoring toggle
-        const mon = q('#camMonitoringToggle');
-        const monInfo = q('#camMonitoringInfo');
-        if (mon && monInfo) {
-          mon.addEventListener('change', () => {
-            monInfo.style.display = mon.checked ? 'block' : 'none';
-          });
-        }
-
-      // Stress simulation for CAM (updates risk + recommendation text)
-        const stressBtn = q('#camStressBtn');
-        if (stressBtn && ai?.extracted) {
-          let stressed = false;
-          stressBtn.addEventListener('click', () => {
-            stressed = !stressed;
-            const ex = stressed ? applyStressScenario(ai.extracted) : ai.extracted;
-            const eff = computeRiskFromExplainability(ex, 0);
-            if (q('#cam-risk-status')) {
-              q('#cam-risk-status').textContent = eff.status;
-              q('#cam-risk-status').style.color = riskStatusColor(eff.status);
-            }
-            if (q('#cam-risk-score')) q('#cam-risk-score').textContent = `Updated risk score: ${eff.score}`;
-            if (q('#cam-pd-line')) q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(computePD(eff.score) * 100)}%`;
-            stressBtn.textContent = stressed ? 'Reset Stress Scenario' : 'Simulate Stress Scenario';
+      // Jump link for side-by-side scenario view
+        const scenarioBtn = q('#camScenarioBtn');
+        const scenarioPanel = q('#camScenarioComparison');
+        if (scenarioBtn && scenarioPanel) {
+          scenarioBtn.addEventListener('click', () => {
+            scenarioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
         }
 
@@ -1396,11 +2160,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const aiObj = (cached.ai || window.latestAI || null);
     const ex = aiObj?.extracted || {};
-    const computedRisk = aiObj?.risk || computeRiskFromExplainability(ex, 0);
-    const pd = computePD(computedRisk.score || 50);
-    const fraud = computeFraudIndicator(ex);
-    const outcome = decideCaseOutcome({ riskStatus: computedRisk.status, riskScore: computedRisk.score, pd, fraudScore: fraud });
-    const sanction = outcome.sanctionCr == null ? Math.max(0, (parseFloat(facilityVal) || 0) * 0.8) : outcome.sanctionCr;
+    const committeeDecision = cached.decision || computeCoreDecision({
+      metrics: {
+        ebitda: Number(ebitdaVal),
+        debtService: Number(debtVal),
+        facility: Number(facilityVal),
+        networth: Number(networthVal),
+      },
+      extracted: ex,
+      officerAdjust: Number(q('#adjust')?.value || 0),
+      warnings: aiObj?.warnings || null,
+      docCoveragePercent: Number(cached.coveragePercent || 0) || null,
+    });
+    const computedRisk = committeeDecision.risk || aiObj?.risk || computeRiskFromExplainability(ex, 0);
+    const cachedSanction = Number(cached?.metrics?.approvedAmount ?? cached?.metrics?.sanction ?? 0);
+    const sanction = committeeDecision?.outcome?.sanctionCr
+      ?? (cachedSanction || Math.max(0, (parseFloat(facilityVal) || 0) * 0.8));
 
     const caseData = {
       id: '#' + (Math.floor(Math.random() * 9000) + 1000),
@@ -1414,12 +2189,15 @@ document.addEventListener('DOMContentLoaded', () => {
         ebitda: ebitdaVal,
         debtService: debtVal,
         facility: facilityVal,
+        networth: networthVal,
         approvedAmount: sanction ? String(Math.round(sanction * 100) / 100) : '0',
         leverage: calcLev,
         dscr: calcDscr
       },
       ai: aiObj,
-      status: outcome.status,
+      decision: committeeDecision,
+      coveragePercent: cached.coveragePercent || null,
+      status: committeeDecision?.outcome?.status || 'Pending',
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     };
 
@@ -1445,6 +2223,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Populate Tables from Ledger if they exist
   const allCasesBody = q('#allCasesBody');
   const recentCasesBody = q('#recentCasesBody');
+  const ledgerCardsGrid = q('#ledgerCardsGrid');
+  const ledgerEmptyState = q('#ledgerEmptyState');
   const archived = JSON.parse(localStorage.getItem('mauryan_archive') || '[]');
 
   if (archived.length > 0) {
@@ -1468,7 +2248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.cells[1].textContent = c.company;
         row.cells[2].textContent = c.sector;
         row.cells[3].querySelector('.risk-tag').textContent = c.grade;
-        row.cells[4].textContent = c.status;
+        row.cells[4].textContent = formatLedgerStatus(c.status);
         row.cells[5].textContent = c.date;
 
         allCasesBody.prepend(row);
@@ -1490,7 +2270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         row.cells[0].textContent = c.company;
         row.cells[1].querySelector('.risk-tag').textContent = c.grade;
-        row.cells[2].textContent = c.status;
+        row.cells[2].textContent = formatLedgerStatus(c.status);
         row.cells[3].textContent = c.date;
         recentCasesBody.prepend(row);
       }
@@ -1505,6 +2285,74 @@ document.addEventListener('DOMContentLoaded', () => {
     '#1287': { id: '#1287', company: 'Zomato Ltd', promoters: 'Deepinder Goyal & Public', sector: 'Tech / Food', grade: 'BB', riskClass: 'risk-bb', date: 'Feb 15, 2026', status: 'Rejected', metrics: { ebitda: '-120', debtService: '500', facility: '200', dscr: '0.00', leverage: '4.50' } },
     '#1286': { id: '#1286', company: 'InterGlobe Aviation', promoters: 'Rahul Bhatia & R. Gangwal', sector: 'Aviation', grade: 'BBB', riskClass: 'risk-bbb', date: 'Feb 12, 2026', status: 'Approved', metrics: { ebitda: '12500', debtService: '4500', facility: '8000', dscr: '2.78', leverage: '2.10' } }
   };
+
+  function getCombinedLedgerRecords() {
+    const seen = new Set();
+    const combined = [];
+
+    [...archived, ...Object.values(legacyRecords)].forEach((record) => {
+      const id = String(record?.id || '').trim();
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      combined.push(record);
+    });
+
+    return combined;
+  }
+
+  function renderLedgerCards(records) {
+    if (!ledgerCardsGrid) return;
+    ledgerCardsGrid.innerHTML = records.map((record) => {
+      const trend = computeTrendMeta(record);
+      const riskClass = (record?.riskClass && record.riskClass !== 'risk-tag')
+        ? record.riskClass
+        : (String(record?.grade || '').includes('A') ? 'risk-a' : (String(record?.grade || '') === 'BBB' ? 'risk-bbb' : 'risk-bb'));
+      const statusGroup = ledgerStatusGroup(record?.status);
+      const note = truncateText(record?.ai?.credit_summary || record?.primary_insights || record?.primaryInsights || 'Institutional record archived with committee summary and underwriting metrics.', 170);
+      const approvedAmount = record?.metrics?.approvedAmount ? formatINR(record.metrics.approvedAmount) : 'Pending';
+      const dscr = record?.metrics?.dscr ? `${record.metrics.dscr}x` : '--x';
+      const leverage = record?.metrics?.leverage ? `${record.metrics.leverage}x` : '--x';
+
+      return `
+        <article class="ledger-card" data-company="${escapeHtml(String(record?.company || '').toLowerCase())}" data-grade="${escapeHtml(String(record?.grade || ''))}" data-status="${escapeHtml(statusGroup)}">
+          <div class="ledger-card-head">
+            <div>
+              <strong>${escapeHtml(record?.company || 'Unknown Entity')}</strong>
+              <div class="ledger-card-meta">${escapeHtml(record?.sector || 'General')} • ${escapeHtml(record?.date || '--')}</div>
+            </div>
+            <span class="trend-pill" data-tone="${escapeHtml(trend.tone)}">${escapeHtml(trend.label)}</span>
+          </div>
+          <div class="ledger-card-body">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+              <span class="risk-tag ${escapeHtml(riskClass)}">${escapeHtml(record?.grade || 'BB')}</span>
+              <span class="surface-kicker" data-tone="${trend.tone === 'risk' ? 'risk' : (trend.tone === 'watch' ? 'watch' : 'strong')}">${escapeHtml(formatLedgerStatus(record?.status || statusGroup))}</span>
+            </div>
+            <p>${escapeHtml(note)}</p>
+            <div class="ledger-card-stats">
+              <div class="ledger-stat">
+                <div class="label">Sanction</div>
+                <div class="value">${escapeHtml(approvedAmount)}</div>
+              </div>
+              <div class="ledger-stat">
+                <div class="label">DSCR</div>
+                <div class="value">${escapeHtml(dscr)}</div>
+              </div>
+              <div class="ledger-stat">
+                <div class="label">Leverage</div>
+                <div class="value">${escapeHtml(leverage)}</div>
+              </div>
+            </div>
+            <div class="ledger-card-foot">
+              <div class="ledger-card-meta">${escapeHtml(record?.id || '--')}</div>
+              <a href="#" class="view-btn" onclick="viewArchivedCase('${String(record?.id || '').replace(/'/g, "\\'")}'); return false;">Open Case</a>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  renderLedgerCards(getCombinedLedgerRecords());
 
   // Detailed View Logic
   window.viewArchivedCase = function (caseId) {
@@ -1745,7 +2593,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Calculate scores based on metrics
       let finHealth = dscrVal >= 2 ? 92 : (dscrVal >= 1.2 ? 71 : 34);
-      let altRisk = c.status === 'Approved' ? 88 : 42;
+      let altRisk = ledgerStatusGroup(c.status) === 'Approved' ? 88 : 42;
       let macro = (c.grade === 'A+' || c.grade === 'A') ? 85 : (c.grade.includes('B') ? 62 : 38);
 
       // Add precise ML "float" to look like a real live calculation
@@ -1780,16 +2628,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Dynamic AI summary tailored for Vivriti Capital
       const summaryEl = q('#xaiSummary');
-      if (summaryEl) {
-        if (window.caseViewState?.summary) {
-          summaryEl.textContent = window.caseViewState.summary;
-        } else if (c.status === 'Approved') {
+        if (summaryEl) {
+          if (window.caseViewState?.summary) {
+            summaryEl.textContent = window.caseViewState.summary;
+        } else if (ledgerStatusGroup(c.status) === 'Approved') {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> The neural model recommends <span style="color:var(--antique-gold); font-weight:bold;">APPROVAL</span>. The entity exhibits immense resilience with a robust DSCR of ${dscrVal}x, successfully mitigating alternative data flags. The risk profile aligns seamlessly with <em>Vivriti Capital's mid-market enterprise underwriting thresholds</em>. No significant macro-headwinds detected for the ${c.sector} sector.`;
-        } else if (c.status === 'Pending') {
+        } else if (ledgerStatusGroup(c.status) === 'Pending') {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> This case is <span style="color:#f39c12; font-weight:bold;">PENDING REVIEW</span>. While alternative data flags are moderate, the leverage of ${levVal}x requires manual credit committee override. The model suggests further investigation into recent RBI circulars impacting the ${c.sector} sector before proceeding with Vivriti capital deployment.`;
         } else {
           summaryEl.innerHTML = `<strong>Kautilya Engine Decision:</strong> The model flags this as <span style="color:#c0392b; font-weight:bold;">HIGH RISK (REJECT)</span>. A heavily stressed DSCR of ${dscrVal}x combined with elevated counterparty risks indicates a failure to meet Vivriti Capital's baseline prudential thresholds. Severe liquidity alerts detected in connected promoter networks.`;
         }
+      }
+    } else {
+      const viewContainer = document.querySelector('main .container');
+      if (viewContainer) {
+        viewContainer.innerHTML = `
+          <div class="empty-panel" style="max-width: 760px; margin: 0 auto; padding: 36px;">
+            <strong>That case is no longer available in the Dharma Ledger.</strong>
+            <p>The link may be outdated or the archived record may have been cleared from this browser. Open the ledger to choose another case, or create a fresh memo and archive it again.</p>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px;">
+              <a href="all-cases.html" class="btn btn-primary" style="text-decoration:none;">Open Dharma Ledger</a>
+              <a href="new-case.html" class="btn" style="text-decoration:none; background: transparent; color: var(--imperial-indigo); border: 2px solid var(--imperial-indigo);">Create New Case</a>
+            </div>
+          </div>
+        `;
       }
     }
   }
@@ -1800,39 +2662,64 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusFilter = q('#statusFilter');
   const ledgerBody = q('#allCasesBody');
 
+  function matchesLedgerFilters({ company = '', grade = '', status = '' }, { searchTerm = '', riskTerm = '', statusTerm = '' }) {
+    const normalizedCompany = String(company || '').toLowerCase();
+    const normalizedGrade = String(grade || '');
+    const normalizedStatus = ledgerStatusGroup(status);
+
+    const matchesSearch = normalizedCompany.includes(searchTerm);
+    const matchesRisk = riskTerm === '' || (
+      riskTerm === 'A' ? normalizedGrade.startsWith('A') :
+        riskTerm === 'BBB' ? normalizedGrade === 'BBB' :
+          riskTerm === 'BB' ? (normalizedGrade === 'BB' || normalizedGrade === 'B') :
+            normalizedGrade.includes(riskTerm)
+    );
+    const matchesStatus = statusTerm === '' || normalizedStatus === statusTerm;
+
+    return matchesSearch && matchesRisk && matchesStatus;
+  }
+
   if (ledgerSearch || riskFilter || statusFilter) {
     const filterLedger = () => {
       const searchTerm = ledgerSearch ? ledgerSearch.value.toLowerCase() : '';
       const riskTerm = riskFilter ? riskFilter.value : '';
       const statusTerm = statusFilter ? statusFilter.value : '';
+      const criteria = { searchTerm, riskTerm, statusTerm };
+      let visibleItems = 0;
 
-      if (!ledgerBody) return;
+      if (ledgerBody) {
+        Array.from(ledgerBody.rows).forEach(row => {
+          const visible = matchesLedgerFilters({
+            company: row.cells[1]?.innerText || '',
+            grade: row.cells[3]?.innerText || '',
+            status: row.cells[4]?.innerText || '',
+          }, criteria);
 
-      Array.from(ledgerBody.rows).forEach(row => {
-        const company = row.cells[1].innerText.toLowerCase();
-        const gradeTitle = row.cells[3].innerText; // Risk Grade Text
-        const statusText = row.cells[4].innerText; // Status Text
+          row.style.display = visible ? '' : 'none';
+          if (visible) visibleItems += 1;
+        });
+      }
 
-        const matchesSearch = company.includes(searchTerm);
-        const matchesRisk = riskTerm === '' || (
-          riskTerm === 'A' ? gradeTitle.startsWith('A') :
-            riskTerm === 'BBB' ? gradeTitle === 'BBB' :
-              riskTerm === 'BB' ? (gradeTitle === 'BB' || gradeTitle === 'B') :
-                gradeTitle.includes(riskTerm)
-        );
-        const matchesStatus = statusTerm === '' || statusText === statusTerm;
+      if (ledgerCardsGrid) {
+        Array.from(ledgerCardsGrid.children).forEach(card => {
+          const visible = matchesLedgerFilters({
+            company: card.dataset.company || '',
+            grade: card.dataset.grade || '',
+            status: card.dataset.status || '',
+          }, criteria);
 
-        if (matchesSearch && matchesRisk && matchesStatus) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
+          card.style.display = visible ? '' : 'none';
+          if (!ledgerBody && visible) visibleItems += 1;
+        });
+      }
+
+      if (ledgerEmptyState) ledgerEmptyState.classList.toggle('hidden', visibleItems > 0);
     };
 
     if (ledgerSearch) ledgerSearch.addEventListener('input', filterLedger);
     if (riskFilter) riskFilter.addEventListener('change', filterLedger);
     if (statusFilter) statusFilter.addEventListener('change', filterLedger);
+    filterLedger();
   }
 
   // --- 8. HERO PARTICLE CANVAS ---
