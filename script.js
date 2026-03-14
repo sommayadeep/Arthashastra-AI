@@ -1451,6 +1451,165 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 1.5 ARTHASHASTRA AI AUTO-EXTRACT (WITH CINEMATIC OVERLAY) ---
   const aiBtn = q('#aiExtractBtn');
   const aiLoading = q('#aiLoading');
+  const aiDocLabels = {
+    gst: 'GST returns',
+    itr: 'ITR summaries',
+    bank: 'Bank statements',
+  };
+  const aiPhaseDurationMs = 1600;
+  const aiOverlayHoldMs = 700;
+  const aiSignalLabels = {
+    coverage: 'Data coverage',
+    turnover: 'Turnover pattern',
+    variance: 'Source variance',
+    profitability: 'Profitability',
+    servicing: 'Servicing capacity',
+    cashflow: 'Cash-flow intensity',
+    behaviour: 'Behavioural flags',
+    risk: 'Risk posture',
+    confidence: 'Decision confidence',
+  };
+
+  const aiPhases = [
+    {
+      label: 'Reading uploaded evidence packs',
+      sub: 'GST returns, ITR summaries, and bank statements are being normalized for analysis.',
+      progress: 12,
+      stageIndex: 0,
+      activeDocs: ['gst', 'itr', 'bank'],
+      activeSignals: ['coverage'],
+      popupTag: 'Document parse',
+      popupTitle: 'The engine is validating every uploaded data pack before extraction begins.',
+      popupReason: 'Arthashastra AI first checks whether each file has the structure needed to produce reliable signals instead of noisy outputs.',
+      popupPoints: [
+        'Identifies which packs are present: GST, ITR, bank, or all three.',
+        'Checks whether the file looks structured enough for numerical extraction.',
+        'Builds a coverage score that later influences decision confidence.',
+      ],
+      popupImpact: 'This stage determines whether the final risk view should be treated as strong, partial, or low-confidence.',
+    },
+    {
+      label: 'Extracting turnover and filing discipline',
+      sub: 'The GST layer is being scanned for operating scale, filing rhythm, and reconciliation clues.',
+      progress: 28,
+      stageIndex: 1,
+      activeDocs: ['gst'],
+      activeSignals: ['turnover', 'variance'],
+      popupTag: 'GST analysis',
+      popupTitle: 'The GST object is being mined for commercial scale and reporting consistency.',
+      popupReason: 'GST is a primary operating truth source, so the engine uses it to estimate real turnover and compare filed activity with cash evidence later.',
+      popupPoints: [
+        'Reads turnover-linked fields and monthly filing cadence.',
+        'Looks for irregular jumps or gaps that can distort facility sizing.',
+        'Prepares GST values for later GST-versus-bank variance checks.',
+      ],
+      popupImpact: 'This stage directly affects operating-scale confidence and whether the committee should question reported revenue quality.',
+    },
+    {
+      label: 'Checking profitability and earnings quality',
+      sub: 'ITR data is being used to infer profit support, tax-reported scale, and servicing capacity.',
+      progress: 46,
+      stageIndex: 1,
+      activeDocs: ['itr'],
+      activeSignals: ['profitability', 'servicing'],
+      popupTag: 'ITR analysis',
+      popupTitle: 'The ITR object is being translated into earnings support and servicing clues.',
+      popupReason: 'Tax-reported profit helps the engine estimate whether the borrower can sustain debt obligations without relying only on management-provided numbers.',
+      popupPoints: [
+        'Maps reported profit to EBITDA-like support signals.',
+        'Checks whether profitability is positive, thin, or deteriorating.',
+        'Feeds servicing-capacity logic that later supports DSCR interpretation.',
+      ],
+      popupImpact: 'This stage helps the memo explain whether earnings strength supports the requested facility or needs closer banker review.',
+    },
+    {
+      label: 'Tracing real cash movement and banking behaviour',
+      sub: 'The bank layer is detecting inflows, debt-service patterns, and cheque return events.',
+      progress: 66,
+      stageIndex: 1,
+      activeDocs: ['bank'],
+      activeSignals: ['cashflow', 'behaviour'],
+      popupTag: 'Bank analysis',
+      popupTitle: 'The bank object is being scanned for actual money movement and behavioural risk.',
+      popupReason: 'Bank statements are used as the closest observable cash lens, so the engine looks for inflow intensity, servicing debits, and bounce patterns.',
+      popupPoints: [
+        'Measures inflow intensity and debt-service-like outflows.',
+        'Detects cheque return or unpaid debit behaviour as an early warning flag.',
+        'Builds the observed cash base for GST-to-bank reconciliation.',
+      ],
+      popupImpact: 'This stage strengthens or weakens trust in the borrower’s repayment behaviour beyond headline financial ratios.',
+    },
+    {
+      label: 'Reconciling signals into a committee-ready path',
+      sub: 'Arthashastra AI is comparing document sources and building risk, variance, and confidence signals.',
+      progress: 86,
+      stageIndex: 2,
+      activeDocs: ['gst', 'itr', 'bank'],
+      activeSignals: ['variance', 'confidence', 'risk'],
+      popupTag: 'Decision mapping',
+      popupTitle: 'Cross-object reconciliation is now converting evidence into a defendable credit stance.',
+      popupReason: 'The engine combines extracted fields from all sources and checks whether the story is internally consistent before surfacing risk and confidence.',
+      popupPoints: [
+        'Compares GST turnover with observed bank inflow to detect mismatch risk.',
+        'Blends profitability, servicing, and behaviour into the underwriting posture.',
+        'Adjusts decision confidence based on missing packs and signal quality.',
+      ],
+      popupImpact: 'This is where the committee view becomes explainable: every major risk or approval signal ties back to a document source.',
+    },
+    {
+      label: 'Detection complete',
+      sub: 'The underwriting workspace is ready with extracted intelligence for memo generation.',
+      progress: 100,
+      stageIndex: 2,
+      activeDocs: ['gst', 'itr', 'bank'],
+      activeSignals: ['turnover', 'profitability', 'cashflow', 'behaviour', 'variance', 'risk', 'confidence'],
+      popupTag: 'Extraction ready',
+      popupTitle: 'All detected objects have been converted into memo-ready credit intelligence.',
+      popupReason: 'The workspace now has the extracted signals needed for traceability, scenario comparison, banker actions, and committee decision drafting.',
+      popupPoints: [
+        'Structured fields are synced back into the underwriting inputs where available.',
+        'Signals are ready for evidence comparison, risk explanation, and stress review.',
+        'The next step is generating the intelligence-backed CAM for the full case view.',
+      ],
+      popupImpact: 'The user can now move from raw documents to a defensible sanction recommendation in one flow.',
+    },
+  ];
+
+  function setAIOverlayPhase(overlay, phase) {
+    if (!overlay || !phase) return;
+    const phaseLabel = overlay.querySelector('#aiPhaseLabel');
+    const phaseSub = overlay.querySelector('#aiPhaseSub');
+    const progressBar = overlay.querySelector('#aiProgressBar');
+    const focusLine = overlay.querySelector('#aiFocusLine');
+    const stageMeta = overlay.querySelector('#aiStageMeta');
+
+    if (phaseLabel) phaseLabel.textContent = phase.label;
+    if (phaseSub) phaseSub.textContent = phase.sub;
+    if (progressBar) progressBar.style.width = `${phase.progress}%`;
+    if (focusLine) {
+      const docs = (phase.activeDocs || []).map((key) => aiDocLabels[key] || key);
+      const signals = (phase.activeSignals || []).map((key) => aiSignalLabels[key] || key);
+      const docText = docs.length ? docs.join(' • ') : 'uploaded data packs';
+      const signalText = signals.length ? signals.join(' • ') : 'underwriting signals';
+      focusLine.textContent = `Analyzing ${docText} to detect ${signalText}.`;
+    }
+    if (stageMeta) {
+      const docCount = (phase.activeDocs || []).length;
+      const signalCount = (phase.activeSignals || []).length;
+      stageMeta.textContent = `${docCount} data pack${docCount === 1 ? '' : 's'} active • ${signalCount} signal${signalCount === 1 ? '' : 's'} in focus`;
+    }
+
+    overlay.querySelectorAll('[data-ai-doc]').forEach((node) => {
+      node.dataset.active = phase.activeDocs.includes(node.dataset.aiDoc) ? 'true' : 'false';
+    });
+    overlay.querySelectorAll('[data-ai-signal]').forEach((node) => {
+      node.dataset.active = phase.activeSignals.includes(node.dataset.aiSignal) ? 'true' : 'false';
+    });
+    overlay.querySelectorAll('[data-ai-stage]').forEach((node) => {
+      const stageIndex = Number(node.dataset.aiStage || 0);
+      node.dataset.state = stageIndex < phase.stageIndex ? 'completed' : (stageIndex === phase.stageIndex ? 'current' : 'pending');
+    });
+  }
 
   // Build the fullscreen overlay DOM
   function createAIOverlay() {
@@ -1458,60 +1617,114 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.className = 'ai-overlay';
     overlay.id = 'aiOverlay';
     overlay.innerHTML = `
-      <div class="ai-scanline"></div>
-      <div class="ai-corner tl"></div>
-      <div class="ai-corner tr"></div>
-      <div class="ai-corner bl"></div>
-      <div class="ai-corner br"></div>
+      <div class="ai-overlay-shell ai-overlay-shell-minimal">
+        <div class="ai-overlay-header">
+          <div>
+            <div class="ai-kicker">Arthashastra AI Auto-Extract</div>
+            <h3>Analyzing all uploaded data</h3>
+            <p>GST, ITR, and bank files are being scanned together so the memo is built on evidence, not guesswork.</p>
+          </div>
+          <div class="ai-overlay-badge">Kautilya Engine</div>
+        </div>
 
-      <div class="ai-mandala-wrap">
-        <div class="ai-ring-outer"></div>
-        <div class="ai-ring-mid"></div>
-        <div class="ai-ring-inner"></div>
-        <div class="ai-center-symbol"><img src="logo.png" alt="Arthashastra AI" onerror="this.src='image.png'" style="width: 80px; height: 80px; border-radius: 50%; object-fit: contain;"></div>
-      </div>
+        <section class="ai-ribbon-block">
+          <div class="ai-ribbon-label">Data packs in analysis</div>
+          <div class="ai-doc-row">
+              <div class="ai-doc-card" data-ai-doc="gst">
+                <div class="ai-doc-accent"></div>
+                <div>
+                  <strong>GST returns</strong>
+                  <span>Turnover, filings, reconciliation</span>
+                </div>
+              </div>
+              <div class="ai-doc-card" data-ai-doc="itr">
+                <div class="ai-doc-accent"></div>
+                <div>
+                  <strong>ITR summaries</strong>
+                  <span>Profitability and earnings support</span>
+                </div>
+              </div>
+              <div class="ai-doc-card" data-ai-doc="bank">
+                <div class="ai-doc-accent"></div>
+                <div>
+                  <strong>Bank statements</strong>
+                  <span>Cash flow and behaviour signals</span>
+                </div>
+              </div>
+          </div>
+        </section>
 
-      <div class="ai-status-text">
-        <div class="ai-phase-label" id="aiPhaseLabel">Invoking Arthashastra Intelligence...</div>
-        <div class="ai-phase-sub" id="aiPhaseSub">INITIALIZING KAUTILYA ENGINE</div>
-      </div>
+        <section class="ai-engine-stage">
+          <div class="ai-engine-flow"></div>
+          <div class="ai-engine-card">
+            <div class="ai-engine-core">
+              <img src="logo.png" alt="Arthashastra AI" onerror="this.src='image.png'">
+              <div class="ai-engine-pulse"></div>
+            </div>
+            <div class="ai-engine-copy">
+              <strong>Arthashastra AI</strong>
+              <span>Connecting every uploaded object into a single underwriting view</span>
+            </div>
+          </div>
+        </section>
 
-      <div class="ai-progress-wrap">
-        <div class="ai-progress-bar" id="aiProgressBar"></div>
+        <section class="ai-ribbon-block">
+          <div class="ai-ribbon-label">Signals being detected</div>
+          <div class="ai-signal-strip">
+              <div class="ai-signal-card" data-ai-signal="turnover">
+                <strong>Turnover</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="profitability">
+                <strong>Profitability</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="cashflow">
+                <strong>Cash flow</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="servicing">
+                <strong>Debt service</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="behaviour">
+                <strong>Behaviour</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="variance">
+                <strong>Variance</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="risk">
+                <strong>Risk</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="confidence">
+                <strong>Confidence</strong>
+              </div>
+              <div class="ai-signal-card" data-ai-signal="coverage">
+                <strong>Coverage</strong>
+              </div>
+          </div>
+        </section>
+
+        <div class="ai-overlay-footer ai-overlay-footer-compact">
+          <div class="ai-stage-rail">
+            <div class="ai-stage-pill" data-ai-stage="0">Document parse</div>
+            <div class="ai-stage-pill" data-ai-stage="1">Signal extraction</div>
+            <div class="ai-stage-pill" data-ai-stage="2">Committee mapping</div>
+          </div>
+          <div class="ai-status-text">
+            <div class="ai-phase-label" id="aiPhaseLabel"></div>
+            <div class="ai-phase-sub" id="aiPhaseSub"></div>
+          </div>
+          <div class="ai-stage-meta" id="aiStageMeta"></div>
+          <div class="ai-focus-line" id="aiFocusLine"></div>
+          <div class="ai-progress-wrap">
+            <div class="ai-progress-bar" id="aiProgressBar"></div>
+          </div>
+          <div class="ai-footer-note">The extracted fields will sync back into the underwriting workspace automatically.</div>
+        </div>
       </div>
     `;
 
-    // Generate floating particles
-    for (let i = 0; i < 20; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'ai-particle';
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 120 + Math.random() * 200;
-      particle.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
-      particle.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
-      particle.style.left = `calc(50% + ${(Math.random() - 0.5) * 60}px)`;
-      particle.style.top = `calc(50% + ${(Math.random() - 0.5) * 60}px)`;
-      particle.style.animationDelay = `${Math.random() * 3}s`;
-      particle.style.animationDuration = `${2 + Math.random() * 2}s`;
-      overlay.appendChild(particle);
-    }
-
     document.body.appendChild(overlay);
+    setAIOverlayPhase(overlay, aiPhases[0]);
     return overlay;
   }
-
-  // Phase definitions: [label, subtitle, progress%]
-  const aiPhases = [
-    ['Invoking Arthashastra Intelligence...', 'INITIALIZING KAUTILYA ENGINE', 5],
-    ['Decoding Structured Data...', 'GST · ITRs · BANK STATEMENTS', 20],
-    ['Analyzing Unstructured Manuscripts...', 'ANNUAL REPORTS · FINANCIAL STATEMENTS', 35],
-    ['Assessing Governance Documents...', 'BOARD MINUTES · RATING REPORTS · SHAREHOLDING', 50],
-    ['Verifying External Intelligence...', 'MCA FILINGS · LEGAL DISPUTES · NEWS', 65],
-    ['Incorporating Primary Insights...', 'SITE VISITS · MANAGEMENT INTERVIEWS', 80],
-    ['चाणक्य नीति — Applying Ancient Wisdom...', 'RISK GOVERNANCE ALIGNMENT', 90],
-    ['सत्यमेव जयते — Finalizing Assessment...', 'CIVILIZATIONAL GRADE COMPUTATION', 95],
-    ['✦ Intelligence Extraction Complete ✦', 'ARTHASHASTRA AI — KAUTILYA ENGINE v3.0', 100],
-  ];
 
   if (aiBtn) {
     aiBtn.addEventListener('click', async () => {
@@ -1539,23 +1752,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
-      const phaseLabel = overlay.querySelector('#aiPhaseLabel');
-      const phaseSub = overlay.querySelector('#aiPhaseSub');
-      const progressBar = overlay.querySelector('#aiProgressBar');
-
       // Cycle through phases
       aiPhases.forEach((phase, i) => {
         setTimeout(() => {
-          phaseLabel.textContent = phase[0];
-          phaseSub.textContent = phase[1];
-          progressBar.style.width = phase[2] + '%';
-        }, i * 900);
+          setAIOverlayPhase(overlay, phase);
+        }, i * aiPhaseDurationMs);
       });
 
-      // Total animation time: ~6.3 seconds (7 phases × 900ms)
-      const totalTime = aiPhases.length * 900;
+      // Target a slower 9-10 second experience so the scan feels intentional.
+      const totalTime = ((aiPhases.length - 1) * aiPhaseDurationMs) + aiOverlayHoldMs;
 
-      const minDelay = new Promise((resolve) => setTimeout(resolve, totalTime + 400));
+      const minDelay = new Promise((resolve) => setTimeout(resolve, totalTime));
 
       let cleaned = false;
       const cleanup = async () => {
