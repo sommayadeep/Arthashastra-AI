@@ -5,6 +5,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const q = (s) => document.querySelector(s);
   const qa = (s) => Array.from(document.querySelectorAll(s));
 
+  function ensureToastHost() {
+    let host = q('#toastHost');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'toastHost';
+      host.className = 'toast-host';
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  function notify({ title = 'Arthashastra AI', message = '', tone = 'info', timeoutMs = 4200 } = {}) {
+    const host = ensureToastHost();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.dataset.tone = tone;
+    toast.innerHTML = `<div class="toast-title">${escapeHtml(title)}</div><p>${escapeHtml(message)}</p>`;
+    host.appendChild(toast);
+
+    const remove = () => {
+      toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => {
+        try { toast.remove(); } catch { }
+      }, 220);
+    };
+
+    setTimeout(remove, timeoutMs);
+    toast.addEventListener('click', remove);
+    return toast;
+  }
+
   function escapeHtml(s) {
     return String(s ?? '')
       .replaceAll('&', '&amp;')
@@ -24,6 +57,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return '';
   }
+
+  function initMobileNav() {
+    const navContainer = q('.nav-container');
+    const navLinks = q('.nav-links');
+    if (!navContainer || !navLinks || q('.nav-toggle')) return;
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'nav-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Toggle navigation');
+    toggle.innerHTML = '<span></span>';
+
+    const scrim = document.createElement('div');
+    scrim.className = 'nav-scrim';
+    document.body.appendChild(scrim);
+
+    const setOpen = (open) => {
+      navLinks.classList.toggle('is-open', open);
+      toggle.classList.toggle('is-open', open);
+      scrim.classList.toggle('active', open);
+      document.body.classList.toggle('nav-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    };
+
+    toggle.addEventListener('click', () => setOpen(!navLinks.classList.contains('is-open')));
+    scrim.addEventListener('click', () => setOpen(false));
+    navLinks.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setOpen(false);
+      });
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) setOpen(false);
+    });
+
+    navContainer.appendChild(toggle);
+  }
+
+  initMobileNav();
 
   async function postCaseAnalyze(formData) {
     const candidates = [];
@@ -615,6 +688,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 1.2 FILE UPLOAD VISUAL FEEDBACK ---
+  qa('.file-select-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      if (!targetId) return;
+      q(`#${targetId}`)?.click();
+    });
+  });
+
+  function updateWorkspaceInsights() {
+    const company = (q('#company')?.value || '').trim();
+    const sector = (q('#sector')?.value || '').trim();
+    const docs = ['gst_docs', 'itr_docs', 'bank_docs'].map((id) => q(`#${id}`)?.files?.[0]).filter(Boolean);
+    const financials = ['#ebitda', '#debtService', '#networth', '#facility'].map((sel) => parseAmountToCr(q(sel)?.value)).filter((n) => n != null);
+
+    const borrowerStatus = q('#uxBorrowerStatus');
+    const borrowerHint = q('#uxBorrowerHint');
+    const coverageStatus = q('#uxCoverageStatus');
+    const coverageHint = q('#uxCoverageHint');
+    const readinessStatus = q('#uxReadinessStatus');
+    const readinessHint = q('#uxReadinessHint');
+    const badge = q('#workspaceStatusBadge');
+    const gen = q('#generateCamBtn');
+
+    if (borrowerStatus) {
+      borrowerStatus.textContent = company ? `${company}${sector ? ` • ${sector}` : ''}` : 'Add legal entity and sector';
+    }
+    if (borrowerHint) {
+      borrowerHint.textContent = company
+        ? 'Borrower identity is captured. Add promoter and primary insight notes to deepen committee context.'
+        : 'A complete borrower profile makes the memo more credible for committee review.';
+    }
+
+    if (coverageStatus) {
+      coverageStatus.textContent = `${docs.length} of 3 core files uploaded`;
+    }
+    if (coverageHint) {
+      coverageHint.textContent = docs.length === 0
+        ? 'Structured CSV or JSON gives the cleanest extraction and autofill.'
+        : docs.length < 3
+          ? 'Good start. Adding the remaining files will improve reconciliation confidence.'
+          : 'Full core document set detected. This case is ready for deeper analysis.';
+    }
+
+    let readinessCopy = 'Memo draft not ready';
+    let readinessDetail = 'Upload documents or enter core financials to move this case forward.';
+    let badgeText = 'Awaiting borrower profile';
+    let badgeTone = 'watch';
+
+    if (company && docs.length >= 1) {
+      readinessCopy = 'Ready for AI extraction';
+      readinessDetail = 'Run auto-extract to populate EBITDA, debt service, and surrogate facility values.';
+      badgeText = 'Ready for extraction';
+      badgeTone = 'ready';
+    }
+    if (company && docs.length >= 1 && financials.length >= 2) {
+      readinessCopy = 'Ready for CAM generation';
+      readinessDetail = 'Borrower basics, documents, and financial inputs are sufficient for a committee-ready draft.';
+      badgeText = 'Memo draft ready';
+      badgeTone = 'ready';
+    }
+    if (!company && docs.length > 0) {
+      badgeText = 'Borrower name required';
+      badgeTone = 'watch';
+    }
+
+    if (readinessStatus) readinessStatus.textContent = readinessCopy;
+    if (readinessHint) readinessHint.textContent = readinessDetail;
+    if (badge) {
+      badge.textContent = badgeText;
+      badge.dataset.tone = badgeTone;
+    }
+    if (gen) {
+      gen.dataset.ready = company ? 'true' : 'false';
+      gen.style.opacity = company ? '1' : '0.88';
+    }
+  }
+
   const fileInputs = document.querySelectorAll('input[type="file"]');
   fileInputs.forEach(input => {
     input.addEventListener('change', (e) => {
@@ -623,6 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let btn = parent ? parent.querySelector('button, .btn, label') : e.target.nextElementSibling;
       // Ensure we didn't select the input itself
       if (btn === e.target) btn = null;
+      const nameEl = q(`#${e.target.id}_name`);
 
       if (parent || btn) {
         const file = e.target.files[0];
@@ -635,24 +786,36 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.color = 'white';
             btn.style.borderColor = 'var(--imperial-indigo)';
           }
+          if (nameEl) nameEl.textContent = `${file.name} • ${(file.size / 1024).toFixed(1)} KB`;
           if (parent) {
-            parent.style.borderColor = 'var(--imperial-indigo)';
-            parent.style.backgroundColor = 'rgba(26, 37, 64, 0.1)';
+            parent.classList.add('is-filled');
           }
         } else {
           if (btn) {
-            btn.textContent = 'Select';
+            btn.textContent = 'Select file';
             btn.style.background = 'var(--antique-gold)';
             btn.style.color = 'white';
+            btn.style.borderColor = 'transparent';
           }
+          if (nameEl) nameEl.textContent = 'No file selected';
           if (parent) {
-            parent.style.borderColor = 'var(--antique-gold)';
-            parent.style.backgroundColor = 'var(--ivory-card)';
+            parent.classList.remove('is-filled');
           }
         }
       }
+      updateWorkspaceInsights();
     });
   });
+
+  ['#company', '#sector', '#promoters', '#primary_insights', '#ebitda', '#debtService', '#networth', '#facility', '#collateral']
+    .forEach((selector) => {
+      const el = q(selector);
+      if (!el) return;
+      el.addEventListener('input', updateWorkspaceInsights);
+      el.addEventListener('blur', updateWorkspaceInsights);
+    });
+
+  updateWorkspaceInsights();
 
   // --- 1.5 ARTHASHASTRA AI AUTO-EXTRACT (WITH CINEMATIC OVERLAY) ---
   const aiBtn = q('#aiExtractBtn');
@@ -725,7 +888,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputs = qa('input[type="file"]');
       const hasFile = inputs.some(input => input.files.length > 0);
       if (!hasFile) {
-        alert("⚠️ No documents detected.\n\nPlease select at least one document (GST, ITRs, Bank Statements) to proceed.");
+        notify({
+          title: 'Document intelligence',
+          message: 'Select at least one GST, ITR, or bank file before running auto-extract.',
+          tone: 'warning',
+        });
         return;
       }
 
@@ -801,16 +968,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           analysis = await postCaseAnalyze(formData);
         } catch (e) {
-          const tried = e?._arthashastra_last_url ? `\nTried: ${e._arthashastra_last_url}` : '';
-          alert(
-            `⚠️ AI extraction failed.\n\n` +
-            `Error: ${e?.message || e}${tried}\n\n` +
-            `Fix (Localhost):\n` +
-            `1) Start backend: python3 app.py (http://127.0.0.1:5050)\n` +
-            `2) Keep this page open and retry.\n\n` +
-            `Fix (Remote backend):\n` +
-            `localStorage.setItem('arthashastra_backend_base', 'https://<your-backend-host>')`
-          );
+          const tried = e?._arthashastra_last_url ? ` Last tried: ${e._arthashastra_last_url}.` : '';
+          notify({
+            title: 'Extraction failed',
+            message: `The backend could not be reached. Start app.py locally or set arthashastra_backend_base to your deployed backend.${tried}`,
+            tone: 'error',
+            timeoutMs: 7000,
+          });
         }
 
         await minDelay;
@@ -826,10 +990,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const debtServiceCr = extracted?.bank?.debt_service_cr;
 
           if (profitCr == null && turnoverCr == null && inflowCr == null) {
-            alert(
-              "AI Extraction ran, but no numeric fields were extracted.\n\n" +
-              "If you're uploading PDFs, convert/export them to CSV/XLSX to enable real auto-fill."
-            );
+            notify({
+              title: 'Extraction completed',
+              message: 'No numeric fields were found. Structured CSV or JSON files work best for autofill.',
+              tone: 'warning',
+              timeoutMs: 5600,
+            });
           }
 
           if (q('#ebitda') && (q('#ebitda').value === '' || q('#ebitda').value === '0') && profitCr != null) q('#ebitda').value = profitCr;
@@ -846,6 +1012,13 @@ document.addEventListener('DOMContentLoaded', () => {
             adjust.value = '1';
             if (adjustLabel) adjustLabel.textContent = '1';
           }
+
+          updateWorkspaceInsights();
+          notify({
+            title: 'Auto-extract complete',
+            message: `Financial signals updated from ${analysis?.warnings?.length ? 'partially parsed' : 'parsed'} documents. Review the suggested inputs before generating the CAM.`,
+            tone: 'success',
+          });
         }
       } catch (fatal) {
         console.error('AI overlay fatal error:', fatal);
@@ -861,45 +1034,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (genBtn && camOutput) {
     genBtn.addEventListener('click', () => {
-      // Input capture
-      const data = {
-        company: q('#company').value || 'Entity Name',
-        promoters: q('#promoters').value || 'N/A',
-        sector: q('#sector').value || 'N/A',
-        primaryInsights: q('#primary_insights')?.value || '',
-        adjust: parseInt(q('#adjust').value) || 0,
-        docs: {
-          gst: (q('#gst_docs')?.files || []).length > 0,
-          itr: (q('#itr_docs')?.files || []).length > 0,
-          bank: (q('#bank_docs')?.files || []).length > 0
-        }
-      };
-      const docStatusList = [
-        { label: 'GST Filings (12M)', present: data.docs.gst },
-        { label: 'ITRs (3Y)', present: data.docs.itr },
-        { label: 'Bank Statements (12M)', present: data.docs.bank }
-      ];
+      if (!(q('#company')?.value || '').trim()) {
+        notify({
+          title: 'Borrower details needed',
+          message: 'Add the legal entity name before generating the CAM.',
+          tone: 'warning',
+        });
+        q('#company')?.focus();
+        return;
+      }
 
-      const docCount = docStatusList.filter(d => d.present).length;
-      const missingDocs = docStatusList.filter(d => !d.present).map(d => d.label);
-      const coveragePercent = Math.round((docCount / docStatusList.length) * 100);
+      const originalBtnText = genBtn.textContent;
+      genBtn.disabled = true;
+      genBtn.textContent = 'Compiling credit memo...';
+      try {
+        // Input capture
+        const data = {
+          company: q('#company').value || 'Entity Name',
+          promoters: q('#promoters').value || 'N/A',
+          sector: q('#sector').value || 'N/A',
+          primaryInsights: q('#primary_insights')?.value || '',
+          adjust: parseInt(q('#adjust').value) || 0,
+          docs: {
+            gst: (q('#gst_docs')?.files || []).length > 0,
+            itr: (q('#itr_docs')?.files || []).length > 0,
+            bank: (q('#bank_docs')?.files || []).length > 0
+          }
+        };
+        const docStatusList = [
+          { label: 'GST Filings (12M)', present: data.docs.gst },
+          { label: 'ITRs (3Y)', present: data.docs.itr },
+          { label: 'Bank Statements (12M)', present: data.docs.bank }
+        ];
 
-      // Scoring Model (documentation readiness + strategic adjustment)
-      let score = 50 + (docCount * 15) + data.adjust; // baseline plus completeness
-      score = Math.max(0, Math.min(100, score));
+        const docCount = docStatusList.filter(d => d.present).length;
+        const missingDocs = docStatusList.filter(d => !d.present).map(d => d.label);
+        const coveragePercent = Math.round((docCount / docStatusList.length) * 100);
 
-      // Grade Logic
-      let grade = 'BB';
-      let riskClass = 'risk-bb';
-      if (score >= 85) { grade = 'A+'; riskClass = 'risk-a'; }
-      else if (score >= 70) { grade = 'A'; riskClass = 'risk-a'; }
-      else if (score >= 55) { grade = 'BBB'; riskClass = 'risk-bbb'; }
+        // Scoring Model (documentation readiness + strategic adjustment)
+        let score = 50 + (docCount * 15) + data.adjust; // baseline plus completeness
+        score = Math.max(0, Math.min(100, score));
 
-      const recommendation = missingDocs.length === 0
-        ? 'PROCEED — core financial documents are complete.'
-        : `PENDING — awaiting ${missingDocs.join(', ')}.`;
+        // Grade Logic
+        let grade = 'BB';
+        let riskClass = 'risk-bb';
+        if (score >= 85) { grade = 'A+'; riskClass = 'risk-a'; }
+        else if (score >= 70) { grade = 'A'; riskClass = 'risk-a'; }
+        else if (score >= 55) { grade = 'BBB'; riskClass = 'risk-bbb'; }
 
-      const docStatusHtml = docStatusList.map(item => `
+        const recommendation = missingDocs.length === 0
+          ? 'PROCEED — core financial documents are complete.'
+          : `PENDING — awaiting ${missingDocs.join(', ')}.`;
+
+        const docStatusHtml = docStatusList.map(item => `
         <li style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border-gold);">
           <span style="font-weight: 800; color: ${item.present ? 'var(--antique-gold)' : 'var(--text-secondary)'};">${item.present ? '✓' : '○'}</span>
           <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -912,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Content Injection with Ancient Bharat / Imperial Indigo theme
       // IMPORTANT: Use textContent for user-provided data to prevent XSS vulnerabilities.
-      camOutput.innerHTML = `
+        camOutput.innerHTML = `
         <div style="border-bottom: 3px solid var(--antique-gold); padding-bottom: 25px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <h2 id="cam-company-name" style="font-size: 2.2rem; color: var(--imperial-indigo); margin: 0; font-family: 'Playfair Display', serif;"></h2>
@@ -993,93 +1180,111 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       // Safely set user-provided content
-      if (q('#cam-company-name')) q('#cam-company-name').textContent = data.company;
-      if (q('#cam-promoters')) q('#cam-promoters').textContent = data.promoters;
-      if (q('#cam-sector')) q('#cam-sector').textContent = data.sector;
-      if (q('#cam-primary-insights')) q('#cam-primary-insights').textContent = data.primaryInsights ? data.primaryInsights : '—';
+        if (q('#cam-company-name')) q('#cam-company-name').textContent = data.company;
+        if (q('#cam-promoters')) q('#cam-promoters').textContent = data.promoters;
+        if (q('#cam-sector')) q('#cam-sector').textContent = data.sector;
+        if (q('#cam-primary-insights')) q('#cam-primary-insights').textContent = data.primaryInsights ? data.primaryInsights : '—';
 
       // Store globally for archival with concise details
-      window.currentCaseMetrics = {
-        company: data.company,
-        promoters: data.promoters,
-        sector: data.sector,
-        primaryInsights: data.primaryInsights || '',
-        grade: grade,
-        riskClass: riskClass,
-        docs: data.docs,
-        coveragePercent: coveragePercent,
-        score: score,
-        ai: window.latestAI || null
-      };
+        window.currentCaseMetrics = {
+          company: data.company,
+          promoters: data.promoters,
+          sector: data.sector,
+          primaryInsights: data.primaryInsights || '',
+          grade: grade,
+          riskClass: riskClass,
+          docs: data.docs,
+          coveragePercent: coveragePercent,
+          score: score,
+          ai: window.latestAI || null
+        };
 
       // Populate AI panel from latest analysis (if available)
-      const ai = window.latestAI || {};
-      if (ai?.risk?.status && q('#cam-risk-status')) {
-        q('#cam-risk-status').textContent = ai.risk.status;
-        q('#cam-risk-status').style.color = riskStatusColor(ai.risk.status);
-      }
-      if (ai?.risk?.score != null && q('#cam-risk-score')) {
-        q('#cam-risk-score').textContent = `Risk score: ${ai.risk.score}`;
-      }
-      if (q('#cam-ai-summary')) q('#cam-ai-summary').textContent = ai.credit_summary || '—';
-      if (q('#cam-pd-line') && ai?.risk?.score != null) {
-        const pd = computePD(ai.risk.score);
-        q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(pd * 100)}%`;
-      }
-      if (q('#cam-alert-count')) q('#cam-alert-count').textContent = `${(ai.alerts || []).length} Alerts`;
-      if (q('#cam-alerts')) {
-        const list = q('#cam-alerts');
-        const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
-        if (!alerts.length) {
-          list.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No alerts detected.</li>`;
-        } else {
-          list.innerHTML = alerts.slice(0, 6).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+        const ai = window.latestAI || {};
+        if (ai?.risk?.status && q('#cam-risk-status')) {
+          q('#cam-risk-status').textContent = ai.risk.status;
+          q('#cam-risk-status').style.color = riskStatusColor(ai.risk.status);
         }
-      }
+        if (ai?.risk?.score != null && q('#cam-risk-score')) {
+          q('#cam-risk-score').textContent = `Risk score: ${ai.risk.score}`;
+        }
+        if (q('#cam-ai-summary')) q('#cam-ai-summary').textContent = ai.credit_summary || '—';
+        if (q('#cam-pd-line') && ai?.risk?.score != null) {
+          const pd = computePD(ai.risk.score);
+          q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(pd * 100)}%`;
+        }
+        if (q('#cam-alert-count')) q('#cam-alert-count').textContent = `${(ai.alerts || []).length} Alerts`;
+        if (q('#cam-alerts')) {
+          const list = q('#cam-alerts');
+          const alerts = Array.isArray(ai.alerts) ? ai.alerts : [];
+          if (!alerts.length) {
+            list.innerHTML = `<li style="color: var(--text-secondary); font-weight: 700;">No alerts detected.</li>`;
+          } else {
+            list.innerHTML = alerts.slice(0, 6).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+          }
+        }
 
       // Make AI summary more institutional (when we have extracted signals)
-      if (q('#cam-ai-summary') && ai?.extracted) {
-        const metrics = {
-          dscr: (parseFloat(q('#ebitda')?.value || 0) / (parseFloat(q('#debtService')?.value || 1) || 1)) || 0,
-          leverage: (parseFloat(q('#facility')?.value || 0) / (parseFloat(q('#networth')?.value || 1) || 1)) || 0,
-        };
-        q('#cam-ai-summary').textContent = buildInstitutionalSummary({
-          company: data.company,
-          sector: data.sector,
-          extracted: ai.extracted,
-          metrics,
-        });
-      }
+        if (q('#cam-ai-summary') && ai?.extracted) {
+          const metrics = {
+            dscr: (parseFloat(q('#ebitda')?.value || 0) / (parseFloat(q('#debtService')?.value || 1) || 1)) || 0,
+            leverage: (parseFloat(q('#facility')?.value || 0) / (parseFloat(q('#networth')?.value || 1) || 1)) || 0,
+          };
+          q('#cam-ai-summary').textContent = buildInstitutionalSummary({
+            company: data.company,
+            sector: data.sector,
+            extracted: ai.extracted,
+            metrics,
+          });
+        }
 
       // Monitoring toggle
-      const mon = q('#camMonitoringToggle');
-      const monInfo = q('#camMonitoringInfo');
-      if (mon && monInfo) {
-        mon.addEventListener('change', () => {
-          monInfo.style.display = mon.checked ? 'block' : 'none';
-        });
-      }
+        const mon = q('#camMonitoringToggle');
+        const monInfo = q('#camMonitoringInfo');
+        if (mon && monInfo) {
+          mon.addEventListener('change', () => {
+            monInfo.style.display = mon.checked ? 'block' : 'none';
+          });
+        }
 
       // Stress simulation for CAM (updates risk + recommendation text)
-      const stressBtn = q('#camStressBtn');
-      if (stressBtn && ai?.extracted) {
-        let stressed = false;
-        stressBtn.addEventListener('click', () => {
-          stressed = !stressed;
-          const ex = stressed ? applyStressScenario(ai.extracted) : ai.extracted;
-          const eff = computeRiskFromExplainability(ex, 0);
-          if (q('#cam-risk-status')) {
-            q('#cam-risk-status').textContent = eff.status;
-            q('#cam-risk-status').style.color = riskStatusColor(eff.status);
-          }
-          if (q('#cam-risk-score')) q('#cam-risk-score').textContent = `Updated risk score: ${eff.score}`;
-          if (q('#cam-pd-line')) q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(computePD(eff.score) * 100)}%`;
-          stressBtn.textContent = stressed ? 'Reset Stress Scenario' : 'Simulate Stress Scenario';
-        });
-      }
+        const stressBtn = q('#camStressBtn');
+        if (stressBtn && ai?.extracted) {
+          let stressed = false;
+          stressBtn.addEventListener('click', () => {
+            stressed = !stressed;
+            const ex = stressed ? applyStressScenario(ai.extracted) : ai.extracted;
+            const eff = computeRiskFromExplainability(ex, 0);
+            if (q('#cam-risk-status')) {
+              q('#cam-risk-status').textContent = eff.status;
+              q('#cam-risk-status').style.color = riskStatusColor(eff.status);
+            }
+            if (q('#cam-risk-score')) q('#cam-risk-score').textContent = `Updated risk score: ${eff.score}`;
+            if (q('#cam-pd-line')) q('#cam-pd-line').textContent = `Probability of Default (6M): ${Math.round(computePD(eff.score) * 100)}%`;
+            stressBtn.textContent = stressed ? 'Reset Stress Scenario' : 'Simulate Stress Scenario';
+          });
+        }
 
-      camOutput.classList.remove('hidden');
-      camOutput.scrollIntoView({ behavior: 'smooth' });
+        camOutput.classList.remove('hidden');
+        camOutput.scrollIntoView({ behavior: 'smooth' });
+        notify({
+          title: 'CAM generated',
+          message: 'The underwriting memo is ready. Review the AI alerts and archive the case when satisfied.',
+          tone: 'success',
+        });
+      } catch (err) {
+        console.error('CAM generation failed', err);
+        notify({
+          title: 'CAM generation failed',
+          message: 'Something interrupted memo generation. Please review the inputs and try again.',
+          tone: 'error',
+        });
+      } finally {
+        setTimeout(() => {
+          genBtn.disabled = false;
+          genBtn.textContent = originalBtnText;
+        }, 350);
+      }
     });
   }
 
@@ -1229,9 +1434,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
 
     setTimeout(() => {
-      alert(
-        `Case immutably logged.\nRisk snapshot recorded.\nTime-stamped underwriting preserved.\n\nDharma Ledger Entry: ${caseData.id} • ${company}`
-      );
+      notify({
+        title: 'Dharma ledger updated',
+        message: `Case ${caseData.id} for ${company} has been archived with its latest risk snapshot.`,
+        tone: 'success',
+      });
     }, 200);
   };
 
@@ -1307,7 +1514,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (c) {
       window.location.href = `view-case.html?id=${encodeURIComponent(caseId)}`;
     } else {
-      alert(`Mauryan Intelligence Record: Deep Decryption for institutional case #${caseId.replace('#', '')} is currently locked or unavailable.`);
+      notify({
+        title: 'Case unavailable',
+        message: `The institutional record for ${caseId} could not be located in the current ledger.`,
+        tone: 'warning',
+      });
     }
   };
 

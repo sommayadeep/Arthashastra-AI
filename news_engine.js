@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loader = document.querySelector('#loader');
     const refreshBtn = document.querySelector('#refreshBtn');
     const tickerContent = document.querySelector('#tickerContent');
+    const searchStatus = document.querySelector('#newsSearchStatus');
 
     // Filters
     const bankSearch = document.querySelector('#bankSearch');
@@ -22,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let GLOBAL_NEWS = [];
     let LAST_NEWS_NOTE = null;
     let LAST_NEWS_DEBUG = null;
+    let ACTIVE_QUERY = '';
+    let searchDebounce = null;
 
     // Feed configuration
     // - LIVE: what gets the "LIVE BROADCAST" tag
@@ -44,6 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function normalizeBaseUrl(url) {
         return (url || '').trim().replace(/\/+$/, '');
+    }
+
+    function setRefreshState(loading) {
+        if (!refreshBtn) return;
+        refreshBtn.disabled = loading;
+        refreshBtn.textContent = loading ? 'SYNCING...' : 'RESCAN REALM';
+        refreshBtn.style.opacity = loading ? '0.75' : '1';
+    }
+
+    function updateSearchStatus(message) {
+        if (searchStatus) searchStatus.textContent = message;
     }
 
     function getBackendBase() {
@@ -169,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (loader) loader.style.display = 'block';
+        setRefreshState(true);
         if (newsGrid) newsGrid.innerHTML = '';
 
         const searchQuery = query ? query : 'Indian Banking Sector';
@@ -247,8 +262,32 @@ document.addEventListener('DOMContentLoaded', () => {
             LAST_NEWS_NOTE = String(e?.message || e);
         } finally {
             if (loader) loader.style.display = 'none';
+            setRefreshState(false);
         }
         return [];
+    }
+
+    function filterVisibleNews(items) {
+        const val = categoryFilter?.value || 'all';
+        if (val === 'rbi') return items.filter(n => n.title.toLowerCase().includes('rbi') || n.impactType.includes('Compliance'));
+        if (val === 'risk') return items.filter(n => n.riskLevel === 'high' || n.impactType.includes('Credit'));
+        if (val === 'compliance') return items.filter(n => n.impactType.includes('Compliance'));
+        return items;
+    }
+
+    function renderCurrentNews() {
+        const visible = filterVisibleNews(GLOBAL_NEWS);
+        renderNews(visible);
+        const queryText = ACTIVE_QUERY ? `Tracking "${ACTIVE_QUERY}"` : 'Tracking the broad Indian banking sector feed';
+        const itemText = visible.length === 1 ? '1 signal' : `${visible.length} signals`;
+        const note = LAST_NEWS_NOTE ? ` ${LAST_NEWS_NOTE}` : '';
+        updateSearchStatus(`${queryText}. Showing ${itemText}.${note}`);
+    }
+
+    async function runNewsSearch(query = '') {
+        ACTIVE_QUERY = (query || '').trim();
+        GLOBAL_NEWS = await fetchBankingNews(ACTIVE_QUERY);
+        renderCurrentNews();
     }
 
     // --- 3. RENDERING ENGINE (BROADCAST STYLE) ---
@@ -363,26 +402,36 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear cache to force fresh fetch on manual refresh
             localStorage.removeItem('banking_news_cache');
             localStorage.removeItem('banking_news_cache_time');
-            const query = bankSearch.value;
-            GLOBAL_NEWS = await fetchBankingNews(query);
-            renderNews(GLOBAL_NEWS);
+            const query = bankSearch?.value || '';
+            await runNewsSearch(query);
         });
     }
 
     if (categoryFilter) {
         categoryFilter.addEventListener('change', () => {
-            const val = categoryFilter.value;
-            if (val === 'all') renderNews(GLOBAL_NEWS);
-            else if (val === 'rbi') renderNews(GLOBAL_NEWS.filter(n => n.title.toLowerCase().includes('rbi') || n.impactType.includes('Compliance')));
-            else if (val === 'risk') renderNews(GLOBAL_NEWS.filter(n => n.riskLevel === 'high' || n.impactType.includes('Credit')));
-            else if (val === 'compliance') renderNews(GLOBAL_NEWS.filter(n => n.impactType.includes('Compliance')));
+            renderCurrentNews();
+        });
+    }
+
+    if (bankSearch) {
+        bankSearch.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                runNewsSearch(bankSearch.value);
+            }, 450);
+        });
+
+        bankSearch.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            clearTimeout(searchDebounce);
+            runNewsSearch(bankSearch.value);
         });
     }
 
     // Initial Load
     (async function init() {
-        GLOBAL_NEWS = await fetchBankingNews();
-        renderNews(GLOBAL_NEWS);
+        await runNewsSearch();
         renderCirculars();
         renderArchive();
     })();

@@ -199,20 +199,6 @@
             display: inline-block;
         }
 
-        .news-stats-bar {
-            background: var(--imperial-indigo);
-            color: var(--antique-gold);
-            padding: 15px 0;
-            display: flex;
-            justify-content: center;
-            gap: 50px;
-            font-weight: 800;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 2px solid var(--antique-gold);
-        }
-
         /* RBI Section - News style */
         .circular-item {
             padding: 20px 0;
@@ -238,16 +224,6 @@
             padding: 15px;
             border-bottom: 1px solid var(--sandstone-ash);
         }
-
-        .filter-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: var(--ivory-card);
-            border: 1px solid var(--antique-gold);
-            margin-bottom: 40px;
-        }
     </style>
 </head>
 
@@ -271,10 +247,8 @@
 
     <main>
         <!-- NEWS BROADCAST HEADER -->
-        <div
-            style="background: #000; padding: 60px 0; border-bottom: 5px solid var(--antique-gold); text-align: center;">
-            <h1
-                style="font-family: 'Playfair Display', serif; font-size: 4.5rem; color: #fff; margin: 0; line-height: 1;">
+        <div class="banking-hero">
+            <h1>
                 BANKING <span style="color: var(--antique-gold);">WORLD</span>
             </h1>
             <p
@@ -303,11 +277,11 @@
             </div>
         </div>
 
-        <div class="container" style="margin-top: 40px;">
+        <div class="container news-shell">
 
             <!-- FILTER HUD -->
             <div class="filter-header">
-                <div style="flex: 2; display: flex; gap: 15px;">
+                <div class="filter-controls">
                     <input type="text" id="bankSearch" class="input-box"
                         placeholder="Search by Financial Institution..."
                         style="margin-top: 0; background: transparent; border-bottom: 2px solid var(--imperial-indigo);">
@@ -315,12 +289,14 @@
                         <option value="all">ALL FEEDS</option>
                         <option value="rbi">REGULATORY</option>
                         <option value="risk">RISK ALERTS</option>
+                        <option value="compliance">COMPLIANCE</option>
                     </select>
                 </div>
                 <button class="btn btn-primary" id="refreshBtn">RESCAN REALM</button>
             </div>
+            <div id="newsSearchStatus" class="news-search-status" aria-live="polite">Tracking the broad Indian banking sector feed.</div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 60px;">
+            <div class="news-layout">
 
                 <!-- BROADCAST FEED -->
                 <div>
@@ -344,7 +320,7 @@
                 </div>
 
                 <!-- REGULATORY SIDEBAR -->
-                <div style="border-left: 1px solid var(--border-gold); padding-left: 40px;">
+                <div class="news-sidebar">
                     <div style="background: var(--imperial-indigo); color: white; padding: 15px; margin-bottom: 25px;">
                         <h3 style="margin:0; font-size: 1.2rem; text-transform: uppercase;">RBI DIRECTIVES</h3>
                     </div>

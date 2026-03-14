@@ -61,6 +61,34 @@
             <div class="workspace-container" style="margin-top: 0;">
                 <h2 class="hidden">Form Title</h2>
 
+                <section class="workspace-command" aria-label="Workspace readiness overview">
+                    <div class="workspace-command-head">
+                        <div>
+                            <span class="section-tag">Operator View</span>
+                            <h3>Underwriting cockpit</h3>
+                            <p>Capture borrower basics, upload structured financials, and let Arthashastra AI guide readiness before generating the CAM.</p>
+                        </div>
+                        <div class="workspace-status-badge" id="workspaceStatusBadge" data-tone="watch" aria-live="polite">Awaiting borrower profile</div>
+                    </div>
+                    <div class="workspace-health-grid">
+                        <article class="workspace-health-card">
+                            <span class="eyebrow">Borrower Snapshot</span>
+                            <strong id="uxBorrowerStatus" aria-live="polite">Add legal entity and sector</strong>
+                            <p id="uxBorrowerHint">A complete borrower profile makes the memo more credible for committee review.</p>
+                        </article>
+                        <article class="workspace-health-card">
+                            <span class="eyebrow">Document Coverage</span>
+                            <strong id="uxCoverageStatus" aria-live="polite">0 of 3 core files uploaded</strong>
+                            <p id="uxCoverageHint">Structured CSV or JSON gives the cleanest extraction and autofill.</p>
+                        </article>
+                        <article class="workspace-health-card">
+                            <span class="eyebrow">Decision Readiness</span>
+                            <strong id="uxReadinessStatus" aria-live="polite">Memo draft not ready</strong>
+                            <p id="uxReadinessHint">Upload documents or enter core financials to move this case forward.</p>
+                        </article>
+                    </div>
+                </section>
+
                 <form id="newCaseForm" onsubmit="return false;">
                     <!-- BORROWER INFORMATION -->
                     <section class="form-section">
@@ -114,26 +142,41 @@
 
                         <div class="doc-upload-grid">
                             <div class="upload-item">
-                                <span>GST Returns (12M)</span>
+                                <div class="upload-copy">
+                                    <span class="upload-title">GST Returns (12M)</span>
+                                    <span class="upload-caption">Recommended: monthly summary in CSV or JSON with turnover and GSTR fields.</span>
+                                    <span class="upload-file-name" id="gst_docs_name">No file selected</span>
+                                </div>
                                 <input type="file" hidden id="gst_docs">
-                                <button type="button" class="btn"
+                                <button type="button" class="btn file-select-btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('gst_docs').click()">Select</button>
+                                    data-target="gst_docs">Select file</button>
                             </div>
                             <div class="upload-item">
-                                <span>ITRs (3Y)</span>
+                                <div class="upload-copy">
+                                    <span class="upload-title">ITRs (3Y)</span>
+                                    <span class="upload-caption">Upload a summary extract with revenue and PAT/PBT fields for strongest autofill.</span>
+                                    <span class="upload-file-name" id="itr_docs_name">No file selected</span>
+                                </div>
                                 <input type="file" hidden id="itr_docs">
-                                <button type="button" class="btn"
+                                <button type="button" class="btn file-select-btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('itr_docs').click()">Select</button>
+                                    data-target="itr_docs">Select file</button>
                             </div>
                             <div class="upload-item">
-                                <span>Bank Statements (12M)</span>
+                                <div class="upload-copy">
+                                    <span class="upload-title">Bank Statements (12M)</span>
+                                    <span class="upload-caption">Best results come from transaction-level CSV with credit, debit, balance, and narration.</span>
+                                    <span class="upload-file-name" id="bank_docs_name">No file selected</span>
+                                </div>
                                 <input type="file" hidden id="bank_docs">
-                                <button type="button" class="btn"
+                                <button type="button" class="btn file-select-btn"
                                     style="padding: 10px 18px; font-size: 0.8rem; background: var(--antique-gold); color: white;"
-                                    onclick="document.getElementById('bank_docs').click()">Select</button>
+                                    data-target="bank_docs">Select file</button>
                             </div>
+                        </div>
+                        <div class="doc-assist-note">
+                            Tip: sample structured files are available in <code>samples/</code>. If extraction returns no numbers, convert scanned PDFs into spreadsheet summaries before retrying.
                         </div>
                     </section>
 
