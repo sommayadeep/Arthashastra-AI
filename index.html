@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Noto+Sans:wght@400;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 
 <body>
@@ -115,13 +115,13 @@
             <span class="experience-link-kicker">Quick Tour</span>
             <strong>See the guided product walkthrough</strong>
           </a>
+          <a href="#ai-copilot" class="experience-link">
+            <span class="experience-link-kicker">AI Copilot</span>
+            <strong>Try the live AI risk reasoning demo</strong>
+          </a>
           <a href="#pipeline" class="experience-link">
             <span class="experience-link-kicker">Flow</span>
             <strong>Jump straight to how the engine works</strong>
-          </a>
-          <a href="#technology" class="experience-link">
-            <span class="experience-link-kicker">Trust Stack</span>
-            <strong>Review the technology and compliance layer</strong>
           </a>
           <a href="dashboard.html" class="experience-link experience-link-primary">
             <span class="experience-link-kicker">Live Product</span>
@@ -213,6 +213,96 @@
             <div class="showcase-preview-footer">
               <div class="showcase-preview-line"></div>
               <p data-showcase-footnote>Best experiences remove ambiguity before the user has to ask a question.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="copilot-section" id="ai-copilot">
+      <div class="container">
+        <div class="copilot-shell">
+          <div class="copilot-controls">
+            <span class="section-tag">AI COPILOT DEMO</span>
+            <h2>Let judges interact with an AI credit copilot in real time.</h2>
+            <p>Change a few borrower signals and the homepage instantly rewrites the recommendation, risk posture, and
+              decision narrative. It makes the product feel intelligent, responsive, and explainable.</p>
+            <div class="copilot-preset-row" role="tablist" aria-label="AI demo presets">
+              <button class="copilot-preset is-active" type="button" role="tab" aria-selected="true"
+                data-copilot-preset="balanced">Balanced Borrower</button>
+              <button class="copilot-preset" type="button" role="tab" aria-selected="false"
+                data-copilot-preset="growth">Growth Story</button>
+              <button class="copilot-preset" type="button" role="tab" aria-selected="false"
+                data-copilot-preset="watchlist">Watchlist Case</button>
+              <button class="copilot-preset" type="button" role="tab" aria-selected="false"
+                data-copilot-preset="stress">Stress Case</button>
+            </div>
+            <div class="copilot-form-grid">
+              <label class="copilot-field">
+                <span>Sector</span>
+                <select data-copilot-input="sector">
+                  <option value="services">Services</option>
+                  <option value="manufacturing">Manufacturing</option>
+                  <option value="retail">Retail</option>
+                  <option value="infrastructure">Infrastructure</option>
+                </select>
+              </label>
+              <label class="copilot-field">
+                <span>Cashflow Trend</span>
+                <select data-copilot-input="cashflow">
+                  <option value="stable">Stable</option>
+                  <option value="strong">Strong</option>
+                  <option value="uneven">Uneven</option>
+                  <option value="stressed">Stressed</option>
+                </select>
+              </label>
+              <label class="copilot-field">
+                <span>GST Discipline</span>
+                <select data-copilot-input="gst">
+                  <option value="clean">Clean</option>
+                  <option value="minor">Minor Variance</option>
+                  <option value="mismatch">Reconciliation Gaps</option>
+                </select>
+              </label>
+              <label class="copilot-field">
+                <span>Collateral Cover</span>
+                <select data-copilot-input="collateral">
+                  <option value="adequate">Adequate</option>
+                  <option value="strong">Strong</option>
+                  <option value="thin">Thin</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="copilot-output">
+            <div class="copilot-output-top">
+              <span class="copilot-grade" data-copilot-grade>AI Grade • A-</span>
+              <span class="copilot-confidence" data-copilot-confidence>Confidence • 92%</span>
+            </div>
+            <h3 data-copilot-headline>Recommend with routine monitoring.</h3>
+            <p class="copilot-summary" data-copilot-summary>The borrower profile is broadly stable, with enough evidence
+              quality and repayment visibility for the AI to support a measured approval path.</p>
+            <div class="copilot-pill-row">
+              <span class="copilot-pill" data-copilot-risk>Risk posture: Moderate</span>
+              <span class="copilot-pill" data-copilot-action>Action: Approve with watchpoints</span>
+            </div>
+            <div class="copilot-reason-grid" data-copilot-reasons>
+              <article class="copilot-reason-card">
+                <span class="copilot-reason-label">Reason 1</span>
+                <p>Cashflow and operating rhythm look stable enough to support near-term debt servicing.</p>
+              </article>
+              <article class="copilot-reason-card">
+                <span class="copilot-reason-label">Reason 2</span>
+                <p>GST discipline is good, which improves confidence in revenue visibility and transaction integrity.</p>
+              </article>
+              <article class="copilot-reason-card">
+                <span class="copilot-reason-label">Reason 3</span>
+                <p>Collateral cover is sufficient to keep the recommendation defensible if watchpoints are documented.</p>
+              </article>
+            </div>
+            <div class="copilot-next-step">
+              <span class="copilot-next-kicker">AI Next Step</span>
+              <p data-copilot-next>Proceed with approval while monitoring utilization trend shifts and any fresh GST variance in the next review cycle.</p>
             </div>
           </div>
         </div>
@@ -448,7 +538,7 @@
     </div>
   </footer>
 
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 
 </html>

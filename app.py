@@ -11,6 +11,134 @@ from credit_intelligence import compute_credit_intelligence, parse_bank, parse_g
 agent = BankingNewsOrchestrator()
 
 
+def _evaluate_copilot_profile(payload):
+    payload = payload or {}
+
+    def _choice(key, allowed, default):
+        value = str(payload.get(key) or "").strip().lower()
+        return value if value in allowed else default
+
+    sector = _choice("sector", {"services", "manufacturing", "retail", "infrastructure"}, "services")
+    cashflow = _choice("cashflow", {"strong", "stable", "uneven", "stressed"}, "stable")
+    gst = _choice("gst", {"clean", "minor", "mismatch"}, "clean")
+    collateral = _choice("collateral", {"strong", "adequate", "thin"}, "adequate")
+
+    sector_weights = {
+        "services": 1,
+        "manufacturing": 0,
+        "retail": -1,
+        "infrastructure": 2,
+    }
+    cashflow_weights = {
+        "strong": 3,
+        "stable": 2,
+        "uneven": -1,
+        "stressed": -3,
+    }
+    gst_weights = {
+        "clean": 2,
+        "minor": 0,
+        "mismatch": -3,
+    }
+    collateral_weights = {
+        "strong": 2,
+        "adequate": 1,
+        "thin": -2,
+    }
+
+    sector_narratives = {
+        "services": "Services cash cycles are easier to trust when invoicing and collections remain disciplined.",
+        "manufacturing": "Manufacturing borrowers need closer working-capital monitoring because volatility can widen quickly.",
+        "retail": "Retail borrowers are more exposed to demand shocks and margin compression during weaker cycles.",
+        "infrastructure": "Infrastructure borrowers can support a stronger case when execution and cash generation stay on track.",
+    }
+    cashflow_narratives = {
+        "strong": "Cash generation is strong enough to support a more confident underwriting stance.",
+        "stable": "Cashflow is broadly stable, which supports a controlled approval path.",
+        "uneven": "Cashflow is uneven, so the recommendation needs tighter monitoring and stronger conditions.",
+        "stressed": "Cashflow stress is clearly visible, materially weakening the recommendation.",
+    }
+    gst_narratives = {
+        "clean": "GST behavior is clean, improving confidence in revenue visibility and reporting discipline.",
+        "minor": "Minor GST variance keeps the case workable, but not frictionless.",
+        "mismatch": "GST reconciliation gaps reduce confidence because transaction integrity needs explanation.",
+    }
+    collateral_narratives = {
+        "strong": "Collateral strength provides a meaningful downside buffer for the committee.",
+        "adequate": "Collateral cover is acceptable, but not enough to ignore operating watchpoints.",
+        "thin": "Thin collateral means the operating story must carry more of the decision confidence.",
+    }
+
+    score = (
+        sector_weights[sector]
+        + cashflow_weights[cashflow]
+        + gst_weights[gst]
+        + collateral_weights[collateral]
+    )
+
+    grade = "B"
+    headline = "Proceed only after deeper review."
+    risk_posture = "Elevated"
+    action_line = "Escalate for manual committee review"
+    next_step = "Seek stronger repayment evidence, explain reporting gaps, and tighten risk controls before moving further."
+
+    if score >= 7:
+        grade = "A"
+        headline = "Recommend approval with standard controls."
+        risk_posture = "Low to moderate"
+        action_line = "Approve with routine monitoring"
+        next_step = "Move forward while tracking utilization, covenant discipline, and periodic compliance checks."
+    elif score >= 4:
+        grade = "A-"
+        headline = "Recommend with routine monitoring."
+        risk_posture = "Moderate"
+        action_line = "Approve with watchpoints"
+        next_step = "Proceed with approval while documenting monitoring triggers around working capital and reporting discipline."
+    elif score >= 1:
+        grade = "BBB"
+        headline = "Recommend a cautious approval path."
+        risk_posture = "Moderate to elevated"
+        action_line = "Approve with enhanced conditions"
+        next_step = "Strengthen conditions, request tighter reporting cadence, and review exception areas before final sanction."
+
+    confidence_score = max(79, min(98, 88 + (score * 2)))
+    gst_text = (
+        "minor GST variance" if gst == "minor" else
+        "clean GST discipline" if gst == "clean" else
+        "GST reconciliation gaps"
+    )
+    summary = (
+        f"The backend copilot sees a {risk_posture.lower()} {sector} borrower with {cashflow} cashflow behavior, "
+        f"{gst_text}, and {collateral} collateral cover. That combination supports a "
+        f"{action_line.lower()} decision path."
+    )
+
+    reasons = [
+        cashflow_narratives[cashflow],
+        gst_narratives[gst],
+        f"{collateral_narratives[collateral]} {sector_narratives[sector]}",
+    ]
+
+    return {
+        "status": "success",
+        "engine": "backend-credit-copilot",
+        "inputs": {
+            "sector": sector,
+            "cashflow": cashflow,
+            "gst": gst,
+            "collateral": collateral,
+        },
+        "grade": grade,
+        "confidence": f"{confidence_score}%",
+        "headline": headline,
+        "summary": summary,
+        "riskPosture": risk_posture,
+        "actionLine": action_line,
+        "nextStep": next_step,
+        "reasons": reasons,
+    }
+
+
 def _analyze_from_files(files, form):
     warnings = []
     adjust_raw = (form.get("adjust") or "0").strip()
@@ -87,6 +215,11 @@ try:
         result = _analyze_from_files(request.files, request.form)
         return jsonify(result)
 
+    @app.post("/api/copilot/evaluate")
+    def evaluate_copilot():
+        payload = request.get_json(silent=True) or {}
+        return jsonify(_evaluate_copilot_profile(payload))
+
 except Exception:
     # Local/offline fallback (no Flask installed): minimal HTTP server.
     import cgi
@@ -140,6 +273,12 @@ except Exception:
         def do_POST(self):
             try:
                 parsed = urlparse(self.path)
+                if parsed.path == "/api/copilot/evaluate":
+                    length = int(self.headers.get("content-length") or "0")
+                    raw = self.rfile.read(length) if length > 0 else b"{}"
+                    payload = json.loads(raw.decode("utf-8") or "{}")
+                    return _json_response(self, _evaluate_copilot_profile(payload), 200)
+
                 if parsed.path != "/api/case/analyze":
                     return _json_response(self, {"status": "error", "message": "Not found"}, 404)
 

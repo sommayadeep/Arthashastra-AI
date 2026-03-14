@@ -2534,6 +2534,264 @@ section[id] {
   line-height: 1.65;
 }
 
+/* --- AI COPILOT DEMO --- */
+.copilot-section {
+  padding: 112px 0;
+  background:
+    radial-gradient(circle at top left, rgba(185, 149, 59, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(26, 37, 64, 0.04), rgba(26, 37, 64, 0)),
+    var(--manuscript-paper);
+}
+
+.copilot-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 30px;
+  align-items: stretch;
+}
+
+.copilot-controls,
+.copilot-output {
+  border: 1px solid rgba(185, 149, 59, 0.28);
+  box-shadow: 0 22px 48px rgba(26, 37, 64, 0.1);
+}
+
+.copilot-controls {
+  padding: 40px;
+  background: rgba(247, 241, 229, 0.9);
+  backdrop-filter: blur(14px);
+}
+
+.copilot-controls h2 {
+  margin-top: 18px;
+  color: var(--imperial-indigo);
+  font-size: 3rem;
+  line-height: 1.08;
+}
+
+.copilot-controls p {
+  margin-top: 18px;
+  color: var(--text-secondary);
+  font-size: 1.02rem;
+  line-height: 1.78;
+}
+
+.copilot-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.copilot-preset {
+  padding: 11px 16px;
+  border: 1px solid rgba(185, 149, 59, 0.28);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--imperial-indigo);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+
+.copilot-preset:hover {
+  transform: translateY(-2px);
+  border-color: var(--antique-gold);
+}
+
+.copilot-preset.is-active {
+  background: var(--imperial-indigo);
+  border-color: var(--antique-gold);
+  color: var(--manuscript-paper);
+  box-shadow: 0 14px 28px rgba(26, 37, 64, 0.16);
+}
+
+.copilot-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.copilot-field {
+  display: grid;
+  gap: 8px;
+}
+
+.copilot-field span {
+  color: var(--imperial-indigo);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.copilot-field select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(185, 149, 59, 0.3);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--heading-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.copilot-field select:hover,
+.copilot-field select:focus {
+  border-color: var(--antique-gold);
+  box-shadow: 0 0 0 3px rgba(185, 149, 59, 0.12);
+}
+
+.copilot-output {
+  padding: 34px;
+  background:
+    radial-gradient(circle at top right, rgba(185, 149, 59, 0.18), transparent 28%),
+    linear-gradient(160deg, #11203d 0%, #1f2e4c 100%);
+  color: var(--manuscript-paper);
+  position: relative;
+  overflow: hidden;
+}
+
+.copilot-output::after {
+  content: '';
+  position: absolute;
+  inset: auto -30px -70px auto;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(185, 149, 59, 0.2), transparent 70%);
+  pointer-events: none;
+}
+
+.copilot-output-top,
+.copilot-reason-grid,
+.copilot-next-step {
+  position: relative;
+  z-index: 1;
+}
+
+.copilot-output-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.copilot-grade,
+.copilot-confidence {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.copilot-grade {
+  background: rgba(185, 149, 59, 0.18);
+  color: var(--antique-gold);
+}
+
+.copilot-confidence {
+  background: rgba(247, 241, 229, 0.08);
+  color: rgba(239, 230, 210, 0.8);
+}
+
+.copilot-output h3 {
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+  color: var(--manuscript-paper);
+  font-size: 2.2rem;
+  line-height: 1.2;
+}
+
+.copilot-summary {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  color: rgba(239, 230, 210, 0.8);
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+.copilot-pill-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.copilot-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(247, 241, 229, 0.08);
+  color: var(--manuscript-paper);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.copilot-reason-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.copilot-reason-card {
+  padding: 18px 20px;
+  background: rgba(247, 241, 229, 0.08);
+  border: 1px solid rgba(185, 149, 59, 0.16);
+}
+
+.copilot-reason-label {
+  display: inline-block;
+  color: var(--antique-gold);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.copilot-reason-card p {
+  margin-top: 10px;
+  color: rgba(239, 230, 210, 0.78);
+  font-size: 0.92rem;
+  line-height: 1.66;
+}
+
+.copilot-next-step {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(185, 149, 59, 0.18);
+}
+
+.copilot-next-kicker {
+  display: inline-block;
+  color: var(--antique-gold);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.copilot-next-step p {
+  margin-top: 10px;
+  color: rgba(239, 230, 210, 0.8);
+  font-size: 0.94rem;
+  line-height: 1.72;
+}
+
 /* --- PIPELINE SECTION --- */
 .pipeline-section {
   padding: 120px 0;
@@ -2925,6 +3183,10 @@ section[id] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .copilot-shell {
+    grid-template-columns: 1fr;
+  }
+
   .showcase-shell {
     grid-template-columns: 1fr;
   }
@@ -3036,19 +3298,24 @@ section[id] {
     grid-template-columns: 1fr;
   }
 
+  .copilot-controls,
+  .copilot-output,
   .showcase-copy,
   .showcase-preview {
     padding: 26px;
   }
 
+  .copilot-controls h2,
   .showcase-copy h2 {
     font-size: 2.35rem;
   }
 
+  .copilot-form-grid,
   .showcase-tab-list {
     grid-template-columns: 1fr;
   }
 
+  .copilot-output-top,
   .showcase-preview-top {
     flex-direction: column;
     align-items: flex-start;
@@ -3830,6 +4097,7 @@ section[id] {
 
 @media (max-width: 560px) {
   .hero,
+  .copilot-section,
   .showcase-section,
   .precision-section,
   .pipeline-section,
@@ -3851,6 +4119,14 @@ section[id] {
 
   .experience-link {
     padding: 16px;
+  }
+
+  .copilot-preset {
+    width: 100%;
+  }
+
+  .copilot-output h3 {
+    font-size: 1.7rem;
   }
 
   .btn {

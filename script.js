@@ -126,6 +126,37 @@ document.addEventListener('DOMContentLoaded', () => {
     throw err;
   }
 
+  async function postCopilotEvaluate(payload) {
+    const candidates = [];
+    const base = getBackendBase();
+    if (base) candidates.push(base.replace(/\/+$/, '') + '/api/copilot/evaluate');
+    candidates.push('/api/copilot/evaluate');
+    candidates.push('http://localhost:5050/api/copilot/evaluate');
+    candidates.push('http://127.0.0.1:5050/api/copilot/evaluate');
+    candidates.push('http://localhost:5000/api/copilot/evaluate');
+    candidates.push('http://127.0.0.1:5000/api/copilot/evaluate');
+
+    let lastErr = null;
+    let lastUrl = null;
+    for (const url of candidates) {
+      try {
+        lastUrl = url;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {}),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    const err = lastErr || new Error('Copilot request failed');
+    err._arthashastra_last_url = lastUrl;
+    throw err;
+  }
+
   function riskStatusColor(status) {
     if (status === 'Low') return '#27ae60';
     if (status === 'Moderate') return '#9E7C2F';
@@ -3312,6 +3343,257 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.45 });
 
     showcaseObserver.observe(showcaseSection);
+  }
+
+  // --- 13. HOMEPAGE AI COPILOT DEMO ---
+  const copilotSection = q('#ai-copilot');
+  const copilotInputs = document.querySelectorAll('[data-copilot-input]');
+  const copilotPresets = document.querySelectorAll('[data-copilot-preset]');
+  const copilotGrade = q('[data-copilot-grade]');
+  const copilotConfidence = q('[data-copilot-confidence]');
+  const copilotHeadline = q('[data-copilot-headline]');
+  const copilotSummary = q('[data-copilot-summary]');
+  const copilotRisk = q('[data-copilot-risk]');
+  const copilotAction = q('[data-copilot-action]');
+  const copilotReasons = q('[data-copilot-reasons]');
+  const copilotNext = q('[data-copilot-next]');
+
+  if (
+    copilotSection &&
+    copilotInputs.length > 0 &&
+    copilotPresets.length > 0 &&
+    copilotGrade &&
+    copilotConfidence &&
+    copilotHeadline &&
+    copilotSummary &&
+    copilotRisk &&
+    copilotAction &&
+    copilotReasons &&
+    copilotNext
+  ) {
+    const copilotPresetsMap = {
+      balanced: {
+        sector: 'services',
+        cashflow: 'stable',
+        gst: 'clean',
+        collateral: 'adequate',
+      },
+      growth: {
+        sector: 'infrastructure',
+        cashflow: 'strong',
+        gst: 'minor',
+        collateral: 'strong',
+      },
+      watchlist: {
+        sector: 'manufacturing',
+        cashflow: 'uneven',
+        gst: 'minor',
+        collateral: 'adequate',
+      },
+      stress: {
+        sector: 'retail',
+        cashflow: 'stressed',
+        gst: 'mismatch',
+        collateral: 'thin',
+      },
+    };
+
+    const sectorWeights = {
+      services: 1,
+      manufacturing: 0,
+      retail: -1,
+      infrastructure: 2,
+    };
+
+    const cashflowWeights = {
+      strong: 3,
+      stable: 2,
+      uneven: -1,
+      stressed: -3,
+    };
+
+    const gstWeights = {
+      clean: 2,
+      minor: 0,
+      mismatch: -3,
+    };
+
+    const collateralWeights = {
+      strong: 2,
+      adequate: 1,
+      thin: -2,
+    };
+
+    const sectorNarratives = {
+      services: 'Services cash cycles are usually easier to read when invoicing discipline stays healthy.',
+      manufacturing: 'Manufacturing needs tighter monitoring because working capital swings can widen quickly.',
+      retail: 'Retail borrowers are more exposed to demand volatility and margin pressure during weak cycles.',
+      infrastructure: 'Infrastructure stories can look attractive when execution and cash generation stay on track.',
+    };
+
+    const cashflowNarratives = {
+      strong: 'Cash generation is strong enough to support a more confident recommendation.',
+      stable: 'Cashflow is broadly stable, which supports a controlled approval path.',
+      uneven: 'Cashflow is uneven, so the AI pushes for closer monitoring before comfort increases.',
+      stressed: 'Cashflow stress is visible, which materially weakens the recommendation.',
+    };
+
+    const gstNarratives = {
+      clean: 'GST behavior is clean, which improves trust in turnover visibility and reporting discipline.',
+      minor: 'There are minor GST variances, so the case is workable but not frictionless.',
+      mismatch: 'GST reconciliation gaps reduce confidence because revenue quality and transaction integrity need explanation.',
+    };
+
+    const collateralNarratives = {
+      strong: 'Collateral strength gives the committee a meaningful downside buffer.',
+      adequate: 'Collateral cover is acceptable, but not enough to ignore operating watchpoints.',
+      thin: 'Thin collateral means the operating story must do much more of the heavy lifting.',
+    };
+
+    const getCopilotValues = () => {
+      const values = {};
+      copilotInputs.forEach(input => {
+        values[input.dataset.copilotInput] = input.value;
+      });
+      return values;
+    };
+
+    const setCopilotValues = (values) => {
+      copilotInputs.forEach(input => {
+        const nextValue = values[input.dataset.copilotInput];
+        if (nextValue) input.value = nextValue;
+      });
+    };
+
+    const buildCopilotState = (values) => {
+      const score =
+        sectorWeights[values.sector] +
+        cashflowWeights[values.cashflow] +
+        gstWeights[values.gst] +
+        collateralWeights[values.collateral];
+
+      let grade = 'B';
+      let headline = 'Proceed only after deeper review.';
+      let riskPosture = 'Elevated';
+      let actionLine = 'Escalate for manual committee review';
+      let nextStep = 'Seek stronger repayment evidence, explain reporting gaps, and tighten risk controls before moving further.';
+
+      if (score >= 7) {
+        grade = 'A';
+        headline = 'Recommend approval with standard controls.';
+        riskPosture = 'Low to moderate';
+        actionLine = 'Approve with routine monitoring';
+        nextStep = 'Move forward while tracking normal utilization, covenant discipline, and periodic compliance checks.';
+      } else if (score >= 4) {
+        grade = 'A-';
+        headline = 'Recommend with routine monitoring.';
+        riskPosture = 'Moderate';
+        actionLine = 'Approve with watchpoints';
+        nextStep = 'Proceed with approval while documenting monitoring triggers around working capital and reporting discipline.';
+      } else if (score >= 1) {
+        grade = 'BBB';
+        headline = 'Recommend a cautious approval path.';
+        riskPosture = 'Moderate to elevated';
+        actionLine = 'Approve with enhanced conditions';
+        nextStep = 'Strengthen conditions, request tighter reporting cadence, and review exception areas before final sanction.';
+      } else {
+        grade = 'BB';
+        headline = 'Proceed only after deeper review.';
+        riskPosture = 'Elevated';
+        actionLine = 'Escalate for manual committee review';
+        nextStep = 'Seek stronger repayment evidence, explain reporting gaps, and tighten risk controls before moving further.';
+      }
+
+      const confidenceScore = Math.max(79, Math.min(98, 88 + (score * 2)));
+      const summary = `The AI sees a ${riskPosture.toLowerCase()} ${values.sector} borrower with ${values.cashflow} cashflow behavior, ${values.gst === 'minor' ? 'minor GST variance' : values.gst === 'clean' ? 'clean GST discipline' : 'GST reconciliation gaps'}, and ${values.collateral} collateral cover. That combination supports a ${actionLine.toLowerCase()} decision path.`;
+
+      const reasons = [
+        cashflowNarratives[values.cashflow],
+        gstNarratives[values.gst],
+        `${collateralNarratives[values.collateral]} ${sectorNarratives[values.sector]}`,
+      ];
+
+      return {
+        grade,
+        confidence: `${confidenceScore}%`,
+        headline,
+        summary,
+        riskPosture,
+        actionLine,
+        nextStep,
+        reasons,
+      };
+    };
+
+    let copilotRequestToken = 0;
+
+    const applyCopilotState = (state, activePreset = '') => {
+      copilotGrade.textContent = `AI Grade • ${state.grade}`;
+      copilotConfidence.textContent = `Confidence • ${state.confidence}`;
+      copilotHeadline.textContent = state.headline;
+      copilotSummary.textContent = state.summary;
+      copilotRisk.textContent = `Risk posture: ${state.riskPosture}`;
+      copilotAction.textContent = `Action: ${state.actionLine}`;
+      copilotNext.textContent = state.nextStep;
+      copilotReasons.innerHTML = state.reasons
+        .map((reason, idx) => `
+          <article class="copilot-reason-card">
+            <span class="copilot-reason-label">Reason ${idx + 1}</span>
+            <p>${reason}</p>
+          </article>
+        `)
+        .join('');
+
+      copilotPresets.forEach(button => {
+        const isActive = button.dataset.copilotPreset === activePreset;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', String(isActive));
+      });
+    };
+
+    const renderCopilot = async (activePreset = '') => {
+      const values = getCopilotValues();
+      const fallbackState = buildCopilotState(values);
+      applyCopilotState(fallbackState, activePreset);
+
+      const requestToken = ++copilotRequestToken;
+      try {
+        const response = await postCopilotEvaluate(values);
+        if (requestToken !== copilotRequestToken) return;
+        if (response && response.status === 'success') {
+          applyCopilotState({
+            grade: response.grade,
+            confidence: response.confidence,
+            headline: response.headline,
+            summary: response.summary,
+            riskPosture: response.riskPosture,
+            actionLine: response.actionLine,
+            nextStep: response.nextStep,
+            reasons: Array.isArray(response.reasons) && response.reasons.length > 0 ? response.reasons : fallbackState.reasons,
+          }, activePreset);
+        }
+      } catch (_err) {
+        // Keep the local inference in place when the backend is unavailable.
+      }
+    };
+
+    copilotPresets.forEach(button => {
+      button.addEventListener('click', () => {
+        const presetValues = copilotPresetsMap[button.dataset.copilotPreset];
+        if (!presetValues) return;
+        setCopilotValues(presetValues);
+        void renderCopilot(button.dataset.copilotPreset);
+      });
+    });
+
+    copilotInputs.forEach(input => {
+      input.addEventListener('change', () => {
+        void renderCopilot('');
+      });
+    });
+
+    setCopilotValues(copilotPresetsMap.balanced);
+    void renderCopilot('balanced');
   }
 
 });
