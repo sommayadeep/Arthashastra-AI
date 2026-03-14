@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Noto+Sans:wght@400;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 
 <body>
@@ -49,12 +49,26 @@
               assessment memos with mathematical precision and unshakeable confidence.</p>
             <div class="hero-btns">
               <a href="new-case.html" class="btn btn-primary btn-glow">Start New Case</a>
-              <a href="dashboard.html" class="btn btn-outline">Access Dashboard</a>
+              <a href="dashboard.html" class="btn btn-outline dashboard-access-btn">Access Dashboard</a>
             </div>
             <!-- Live Ticker -->
             <div class="hero-live-ticker">
               <span class="ticker-dot"></span>
               <span id="heroTicker">128 cases processed today • 99.2% accuracy • 4.2s avg processing</span>
+            </div>
+            <div class="hero-proof-grid" aria-label="Platform highlights">
+              <article class="hero-proof-card">
+                <span class="hero-proof-label">Fast first impression</span>
+                <strong>Understand the full credit flow in under 30 seconds.</strong>
+              </article>
+              <article class="hero-proof-card">
+                <span class="hero-proof-label">Trust by design</span>
+                <strong>Every output is tied back to evidence, ratios, and reasoning.</strong>
+              </article>
+              <article class="hero-proof-card">
+                <span class="hero-proof-label">Demo friendly</span>
+                <strong>Operators, reviewers, and judges can see value without training.</strong>
+              </article>
             </div>
           </div>
           <div class="hero-visual">
@@ -94,8 +108,31 @@
       </div>
     </section>
 
+    <section class="experience-rail-section" aria-label="Quick tour links">
+      <div class="container">
+        <div class="experience-rail">
+          <a href="#showcase" class="experience-link">
+            <span class="experience-link-kicker">Quick Tour</span>
+            <strong>See the guided product walkthrough</strong>
+          </a>
+          <a href="#pipeline" class="experience-link">
+            <span class="experience-link-kicker">Flow</span>
+            <strong>Jump straight to how the engine works</strong>
+          </a>
+          <a href="#technology" class="experience-link">
+            <span class="experience-link-kicker">Trust Stack</span>
+            <strong>Review the technology and compliance layer</strong>
+          </a>
+          <a href="dashboard.html" class="experience-link experience-link-primary">
+            <span class="experience-link-kicker">Live Product</span>
+            <strong>Open the dashboard experience</strong>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- PRECISION SECTION -->
-    <section class="precision-section">
+    <section class="precision-section" id="why">
       <div class="container">
         <div class="split-layout">
           <div class="precision-left">
@@ -113,8 +150,77 @@
       </div>
     </section>
 
+    <section class="showcase-section" id="showcase">
+      <div class="container">
+        <div class="showcase-shell">
+          <div class="showcase-copy">
+            <span class="section-tag">GUIDED EXPERIENCE</span>
+            <h2>Understand the platform in one clean walkthrough.</h2>
+            <p>Instead of making visitors hunt for value, this section shows the journey from raw documents to a
+              decision-ready memo with clear, fast, demo-friendly touchpoints.</p>
+            <div class="showcase-tab-list" role="tablist" aria-label="Platform walkthrough">
+              <button class="showcase-tab is-active" type="button" role="tab" aria-selected="true"
+                data-showcase-trigger="intake">1. Intake</button>
+              <button class="showcase-tab" type="button" role="tab" aria-selected="false"
+                data-showcase-trigger="analysis">2. Analysis</button>
+              <button class="showcase-tab" type="button" role="tab" aria-selected="false"
+                data-showcase-trigger="narrative">3. Narrative</button>
+              <button class="showcase-tab" type="button" role="tab" aria-selected="false"
+                data-showcase-trigger="decision">4. Decision</button>
+            </div>
+            <div class="showcase-story">
+              <div class="showcase-chip-row" data-showcase-chips>
+                <span class="showcase-chip">Drop documents in one place</span>
+                <span class="showcase-chip">Status stays visible</span>
+                <span class="showcase-chip">No training required to begin</span>
+              </div>
+              <div class="showcase-note">
+                <span class="showcase-note-kicker" data-showcase-kicker>First-touch clarity</span>
+                <p data-showcase-description>The experience starts with a simple intake moment so a new reviewer can
+                  immediately understand what to submit, what the AI reads, and what happens next.</p>
+              </div>
+            </div>
+          </div>
+          <div class="showcase-preview">
+            <div class="showcase-preview-top">
+              <span class="showcase-preview-badge" data-showcase-stage>Stage 01 • Intake</span>
+              <span class="showcase-preview-timing" data-showcase-timing>0:00 - 0:20</span>
+            </div>
+            <div class="showcase-preview-main">
+              <div class="showcase-preview-score">
+                <span>Reviewer confidence</span>
+                <strong data-showcase-score>+38%</strong>
+              </div>
+              <div class="showcase-preview-cards" data-showcase-cards>
+                <article class="showcase-preview-card">
+                  <span class="showcase-card-label">Operator View</span>
+                  <h3>Guided document submission</h3>
+                  <p>Users know which borrower files to drop in, and the page immediately feels structured instead of
+                    overwhelming.</p>
+                </article>
+                <article class="showcase-preview-card">
+                  <span class="showcase-card-label">Trust Signal</span>
+                  <h3>Visible processing milestones</h3>
+                  <p>Reviewers can see that extraction, scoring, and memo generation are distinct and auditable stages.</p>
+                </article>
+                <article class="showcase-preview-card">
+                  <span class="showcase-card-label">Judge Lens</span>
+                  <h3>Strong demo narrative from the first click</h3>
+                  <p>The product communicates value quickly, which is critical when someone is evaluating it under time pressure.</p>
+                </article>
+              </div>
+            </div>
+            <div class="showcase-preview-footer">
+              <div class="showcase-preview-line"></div>
+              <p data-showcase-footnote>Best experiences remove ambiguity before the user has to ask a question.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- AI PIPELINE VISUALIZATION -->
-    <section class="pipeline-section">
+    <section class="pipeline-section" id="pipeline">
       <div class="container">
         <div class="engine-header" style="text-align: center; margin-bottom: 80px;">
           <span class="section-tag">AI/ML PIPELINE</span>
@@ -152,7 +258,7 @@
     </section>
 
     <!-- CORE ARCHITECTURE SECTION -->
-    <section class="engine-section">
+    <section class="engine-section" id="architecture">
       <div class="container">
         <div class="engine-header">
           <span class="section-tag"
@@ -217,7 +323,7 @@
     </section>
 
     <!-- TECH STACK / TRUST SECTION -->
-    <section class="trust-section">
+    <section class="trust-section" id="technology">
       <div class="container">
         <div class="engine-header" style="text-align: center; margin-bottom: 60px;">
           <span class="section-tag">TECHNOLOGY</span>
@@ -258,7 +364,7 @@
     </section>
 
     <!-- METRICS SECTION -->
-    <section class="metrics-section" style="padding: 120px 0; text-align: center;">
+    <section class="metrics-section" id="metrics" style="padding: 120px 0; text-align: center;">
       <div class="container">
         <span class="section-tag">COMPREHENSIVE SUITE</span>
         <h2 style="font-size: 3.5rem; margin: 20px 0 25px; color: var(--imperial-indigo);">Comprehensive Metrics</h2>
@@ -286,7 +392,7 @@
     </section>
 
     <!-- FINAL CTA SECTION -->
-    <section class="cta-section">
+    <section class="cta-section" id="cta">
       <div class="container" style="text-align: center;">
         <h2>Ready to Standardize Excellence?</h2>
         <p>Join the forward-thinking institutions using Arthashastra AI to mitigate risk and accelerate lending
@@ -294,8 +400,7 @@
           with institutional grade accuracy.</p>
         <div class="hero-btns" style="justify-content: center;">
           <a href="new-case.html" class="btn btn-primary btn-glow">Start New Case</a>
-          <a href="dashboard.html" class="btn btn-outline"
-            style="border-color: var(--manuscript-paper); color: var(--manuscript-paper);">Access Dashboard</a>
+          <a href="dashboard.html" class="btn btn-outline dashboard-access-btn">Access Dashboard</a>
         </div>
       </div>
     </section>
@@ -343,7 +448,7 @@
     </div>
   </footer>
 
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=7"></script>
 </body>
 
 </html>

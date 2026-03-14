@@ -3091,4 +3091,227 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
+  // --- 12. HOMEPAGE SHOWCASE WALKTHROUGH ---
+  const showcaseTabs = document.querySelectorAll('[data-showcase-trigger]');
+  const showcaseStage = q('[data-showcase-stage]');
+  const showcaseTiming = q('[data-showcase-timing]');
+  const showcaseScore = q('[data-showcase-score]');
+  const showcaseKicker = q('[data-showcase-kicker]');
+  const showcaseDescription = q('[data-showcase-description]');
+  const showcaseChips = q('[data-showcase-chips]');
+  const showcaseCards = q('[data-showcase-cards]');
+  const showcaseFootnote = q('[data-showcase-footnote]');
+  const showcaseSection = q('#showcase');
+
+  if (
+    showcaseTabs.length > 0 &&
+    showcaseStage &&
+    showcaseTiming &&
+    showcaseScore &&
+    showcaseKicker &&
+    showcaseDescription &&
+    showcaseChips &&
+    showcaseCards &&
+    showcaseFootnote &&
+    showcaseSection
+  ) {
+    const showcaseStates = {
+      intake: {
+        stage: 'Stage 01 • Intake',
+        timing: '0:00 - 0:20',
+        score: '+38%',
+        kicker: 'First-touch clarity',
+        description: 'The experience starts with a simple intake moment so a new reviewer can immediately understand what to submit, what the AI reads, and what happens next.',
+        chips: [
+          'Drop documents in one place',
+          'Status stays visible',
+          'No training required to begin',
+        ],
+        cards: [
+          {
+            label: 'Operator View',
+            title: 'Guided document submission',
+            body: 'Users know which borrower files to drop in, and the page immediately feels structured instead of overwhelming.',
+          },
+          {
+            label: 'Trust Signal',
+            title: 'Visible processing milestones',
+            body: 'Reviewers can see that extraction, scoring, and memo generation are distinct and auditable stages.',
+          },
+          {
+            label: 'Judge Lens',
+            title: 'Strong demo narrative from the first click',
+            body: 'The product communicates value quickly, which is critical when someone is evaluating it under time pressure.',
+          },
+        ],
+        footnote: 'Best experiences remove ambiguity before the user has to ask a question.',
+      },
+      analysis: {
+        stage: 'Stage 02 • Analysis',
+        timing: '0:20 - 0:45',
+        score: '+51%',
+        kicker: 'Complexity made readable',
+        description: 'Instead of showing raw model output, the interface surfaces the most important risk signals, reconciliations, and anomalies in a way that is easy to follow.',
+        chips: [
+          'Ratios become scannable',
+          'Outliers are surfaced early',
+          'Multiple data sources align visually',
+        ],
+        cards: [
+          {
+            label: 'Financial Lens',
+            title: 'Ratios, liquidity, and utilization at a glance',
+            body: 'Judges can tell the platform is doing real analytical work without decoding a spreadsheet wall.',
+          },
+          {
+            label: 'Risk Lens',
+            title: 'Flags feel prioritized rather than noisy',
+            body: 'Important warnings stand out first, which keeps the experience decisive and avoids cognitive overload.',
+          },
+          {
+            label: 'Evidence Lens',
+            title: 'Each signal maps back to source data',
+            body: 'The system feels reliable because the insight and the evidence stay connected in the same flow.',
+          },
+        ],
+        footnote: 'Good analysis design helps people trust what the model is saying, not just admire the model.',
+      },
+      narrative: {
+        stage: 'Stage 03 • Narrative',
+        timing: '0:45 - 1:05',
+        score: '+64%',
+        kicker: 'Explainability that sounds decision-ready',
+        description: 'This layer turns technical analysis into a committee-friendly credit story, so reviewers can understand not only the score but also the why behind it.',
+        chips: [
+          'Memo-ready language',
+          'Reasoning stays explainable',
+          'Confidence is visible',
+        ],
+        cards: [
+          {
+            label: 'Memo Layer',
+            title: 'AI turns signals into a readable credit narrative',
+            body: 'The interface feels more mature because it helps reviewers communicate decisions, not just compute them.',
+          },
+          {
+            label: 'Review Layer',
+            title: 'Narrative and metrics reinforce each other',
+            body: 'A judge can see that the storytelling is grounded in the engine rather than pasted on top.',
+          },
+          {
+            label: 'Experience Layer',
+            title: 'Outputs look presentation-ready',
+            body: 'This is the moment where the product starts to feel polished enough for real institutional use.',
+          },
+        ],
+        footnote: 'Explainable AI becomes much more persuasive when the interface speaks the language of decisions.',
+      },
+      decision: {
+        stage: 'Stage 04 • Decision',
+        timing: '1:05 - 1:30',
+        score: '+72%',
+        kicker: 'A finish that feels actionable',
+        description: 'The final screen should help someone move forward with confidence, whether they are approving, watching, or escalating the borrower for further review.',
+        chips: [
+          'Decision path is obvious',
+          'Next steps are actionable',
+          'Outputs feel boardroom ready',
+        ],
+        cards: [
+          {
+            label: 'Decision View',
+            title: 'Approval, caution, or escalation is easy to understand',
+            body: 'The product feels useful because the final outcome is explicit instead of buried in analysis.',
+          },
+          {
+            label: 'Operations View',
+            title: 'Reviewers can act on next steps immediately',
+            body: 'Follow-up asks, missing inputs, and risk notes can be taken forward without reinterpreting the screen.',
+          },
+          {
+            label: 'Demo View',
+            title: 'The end state feels complete and memorable',
+            body: 'A strong closing screen helps judges leave with a clear sense of business value and product maturity.',
+          },
+        ],
+        footnote: 'A beautiful workflow matters most when the last screen makes the next decision obvious.',
+      },
+    };
+
+    const showcaseKeys = Object.keys(showcaseStates);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let showcaseIndex = 0;
+    let showcaseTimer = null;
+    let showcaseLockedByUser = false;
+
+    const renderShowcase = (key) => {
+      const state = showcaseStates[key];
+      if (!state) return;
+
+      showcaseStage.textContent = state.stage;
+      showcaseTiming.textContent = state.timing;
+      showcaseScore.textContent = state.score;
+      showcaseKicker.textContent = state.kicker;
+      showcaseDescription.textContent = state.description;
+      showcaseFootnote.textContent = state.footnote;
+
+      showcaseChips.innerHTML = state.chips
+        .map(chip => `<span class="showcase-chip">${chip}</span>`)
+        .join('');
+
+      showcaseCards.innerHTML = state.cards
+        .map(card => `
+          <article class="showcase-preview-card">
+            <span class="showcase-card-label">${card.label}</span>
+            <h3>${card.title}</h3>
+            <p>${card.body}</p>
+          </article>
+        `)
+        .join('');
+
+      showcaseTabs.forEach((tab, idx) => {
+        const isActive = tab.dataset.showcaseTrigger === key;
+        tab.classList.toggle('is-active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+        if (isActive) showcaseIndex = idx;
+      });
+    };
+
+    const stopShowcaseRotation = () => {
+      if (!showcaseTimer) return;
+      window.clearInterval(showcaseTimer);
+      showcaseTimer = null;
+    };
+
+    const startShowcaseRotation = () => {
+      if (prefersReducedMotion.matches || showcaseLockedByUser || showcaseTimer) return;
+      showcaseTimer = window.setInterval(() => {
+        showcaseIndex = (showcaseIndex + 1) % showcaseKeys.length;
+        renderShowcase(showcaseKeys[showcaseIndex]);
+      }, 4800);
+    };
+
+    showcaseTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        showcaseLockedByUser = true;
+        stopShowcaseRotation();
+        renderShowcase(tab.dataset.showcaseTrigger);
+      });
+    });
+
+    renderShowcase(showcaseKeys[0]);
+
+    const showcaseObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          startShowcaseRotation();
+        } else {
+          stopShowcaseRotation();
+        }
+      });
+    }, { threshold: 0.45 });
+
+    showcaseObserver.observe(showcaseSection);
+  }
+
 });
