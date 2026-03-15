@@ -8,128 +8,777 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Oswald:wght@500;700&family=Playfair+Display:wght@700;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
     <style>
         :root {
             --high-risk: #c0392b;
-            --mod-risk: #d35400;
-            --low-risk: #27ae60;
-            --broadcast-red: #ff2e2e;
+            --mod-risk: #d97706;
+            --low-risk: #1f8f58;
+            --broadcast-red: #e63946;
+            --news-night: #07111d;
+            --news-night-soft: #10213a;
+            --news-ink: #102440;
+            --news-muted: #637286;
+            --news-line: rgba(16, 36, 64, 0.14);
+            --news-panel: #fbf6ea;
+            --news-panel-strong: #f4ecdb;
         }
 
-        /* News Broadcast Typography */
-        .news-headline {
-            font-family: 'Playfair Display', serif;
-            font-weight: 900;
-            font-size: 1.8rem;
-            color: var(--imperial-indigo);
-            line-height: 1.2;
-            margin: 0 0 10px 0;
-            transition: color 0.3s;
-            cursor: pointer;
-            display: block;
-            text-decoration: none;
+        body.banking-news-page {
+            background:
+                radial-gradient(circle at top left, rgba(185, 149, 59, 0.1), transparent 26%),
+                radial-gradient(circle at top right, rgba(25, 46, 86, 0.08), transparent 28%),
+                var(--manuscript-paper);
+            color: var(--news-ink);
         }
 
-        .news-headline:hover {
+        .banking-news-main {
+            padding-bottom: 40px;
+        }
+
+        .banking-hero {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 24%),
+                linear-gradient(135deg, rgba(4, 10, 20, 0.98), rgba(9, 22, 40, 0.94) 58%, rgba(32, 46, 77, 0.92));
+            border-bottom: 4px solid var(--antique-gold);
+            padding: 56px 0 40px;
+        }
+
+        .banking-hero::before,
+        .banking-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto;
+            pointer-events: none;
+        }
+
+        .banking-hero::before {
+            width: 420px;
+            height: 420px;
+            right: -120px;
+            top: -160px;
+            background: radial-gradient(circle, rgba(185, 149, 59, 0.28), transparent 68%);
+        }
+
+        .banking-hero::after {
+            left: -120px;
+            bottom: -120px;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(81, 116, 178, 0.18), transparent 70%);
+        }
+
+        .banking-hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.82fr);
+            gap: 28px;
+            align-items: end;
+        }
+
+        .channel-kicker,
+        .stat-label,
+        .section-slug,
+        .panel-kicker,
+        .anchor-card-header,
+        .breaking-label,
+        .story-rank,
+        .feed-count-badge,
+        .circular-id,
+        .circular-cat,
+        .archive-date {
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .channel-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.84);
+            border-radius: 999px;
+            font-size: 0.84rem;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--broadcast-red);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.56);
+            animation: pulse-red 1.3s infinite;
+            flex-shrink: 0;
+        }
+
+        .banking-hero h1 {
+            margin: 18px 0 10px;
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(3.8rem, 11vw, 6.6rem);
+            line-height: 0.9;
+            color: #fff;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .banking-hero h1 span {
             color: var(--antique-gold);
         }
 
-        .news-item {
-            border-bottom: 3px solid var(--antique-gold);
-            padding: 30px 0;
-            position: relative;
-            display: grid;
-            grid-template-columns: 80px 1fr;
-            gap: 25px;
-            animation: slideInLeft 0.5s ease-out both;
-            background: transparent !important;
-            /* Remove box feel */
-            box-shadow: none !important;
+        .hero-strap {
+            margin: 0;
+            color: var(--antique-gold);
+            font-weight: 900;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            font-size: 0.88rem;
         }
 
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
+        .hero-context {
+            max-width: 700px;
+            margin: 18px 0 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.02rem;
+            line-height: 1.7;
+        }
 
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .hero-brief-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 26px;
+        }
+
+        .brief-card {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+            backdrop-filter: blur(10px);
+        }
+
+        .brief-card span {
+            display: block;
+            color: rgba(255, 255, 255, 0.56);
+            font-size: 0.76rem;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .brief-card strong {
+            display: block;
+            color: #fff;
+            font-size: 0.98rem;
+            line-height: 1.5;
+        }
+
+        .hero-anchor-card {
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+                rgba(6, 13, 25, 0.74);
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(14px);
+        }
+
+        .anchor-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            color: rgba(255, 255, 255, 0.76);
+            font-size: 0.78rem;
+        }
+
+        #newsTimestamp {
+            letter-spacing: 0.08em;
+            text-transform: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.78rem;
+        }
+
+        .lead-story-card {
+            min-height: 248px;
+            display: grid;
+            gap: 16px;
+            align-content: start;
+        }
+
+        .lead-story-placeholder,
+        .lead-story-content {
+            display: grid;
+            gap: 12px;
+        }
+
+        .lead-story-kicker {
+            color: var(--antique-gold);
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .lead-story-card h2 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.95rem;
+            line-height: 1.15;
+            color: #fff;
+        }
+
+        .lead-story-card p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.65;
+        }
+
+        .lead-story-top {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .story-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.82);
+            padding: 7px 12px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .story-chip.story-chip-live {
+            border-color: rgba(230, 57, 70, 0.36);
+            background: rgba(230, 57, 70, 0.14);
+            color: #ffd7d7;
+        }
+
+        .lead-story-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.66);
+            font-size: 0.82rem;
+        }
+
+        .lead-story-footer a {
+            color: var(--antique-gold);
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .lead-story-footer a:hover {
+            color: #fff;
+        }
+
+        .anchor-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .anchor-meta-grid div {
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .anchor-meta-grid span {
+            display: block;
+            color: rgba(255, 255, 255, 0.58);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 8px;
+        }
+
+        .anchor-meta-grid strong {
+            color: #fff;
+            font-size: 0.96rem;
+            line-height: 1.5;
+        }
+
+        .news-stats-bar {
+            max-width: 1200px;
+            margin: -24px auto 0;
+            padding: 0 24px;
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .stat-chip {
+            padding: 18px 20px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(249, 242, 226, 0.98));
+            border: 1px solid rgba(185, 149, 59, 0.16);
+            box-shadow: 0 16px 42px rgba(16, 36, 64, 0.14);
+            display: grid;
+            gap: 8px;
+        }
+
+        .stat-chip strong {
+            font-family: 'Oswald', sans-serif;
+            font-size: 2rem;
+            color: var(--news-ink);
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: var(--news-muted);
+            font-size: 0.8rem;
+        }
+
+        .stat-chip-wide strong {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.96rem;
+            line-height: 1.55;
+            color: var(--news-ink);
+        }
+
+        .broadcast-ticker {
+            margin-top: 20px;
+            background: linear-gradient(90deg, #090d12, #111b2a 55%, #1a2a43);
+            color: #fff;
+            border-top: 1px solid rgba(185, 149, 59, 0.4);
+            border-bottom: 1px solid rgba(185, 149, 59, 0.4);
+            position: relative;
+            overflow: hidden;
+            min-height: 54px;
+        }
+
+        .breaking-label {
+            position: absolute;
+            inset: 0 auto 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            background: linear-gradient(135deg, var(--broadcast-red), #8f1821);
+            color: #fff;
+            z-index: 2;
+            box-shadow: 14px 0 30px rgba(0, 0, 0, 0.3);
+            font-size: 0.86rem;
+        }
+
+        .ticker-track {
+            overflow: hidden;
+            white-space: nowrap;
+            padding-left: 150px;
+        }
+
+        .ticker-inner {
+            display: inline-flex;
+            align-items: center;
+            min-height: 54px;
+            gap: 28px;
+            padding-left: 24px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            animation: tickerSwipe 62s linear infinite;
+        }
+
+        .ticker-inner:hover {
+            animation-play-state: paused;
+        }
+
+        .ticker-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ticker-pill::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--antique-gold);
+            flex-shrink: 0;
+        }
+
+        .news-shell {
+            margin-top: 34px;
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            padding: 20px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 240, 225, 0.98));
+            border: 1px solid rgba(185, 149, 59, 0.18);
+            box-shadow: 0 18px 40px rgba(16, 36, 64, 0.08);
+            margin-bottom: 18px;
+        }
+
+        .filter-controls {
+            flex: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 220px;
+            gap: 14px;
+        }
+
+        .filter-header .input-box {
+            margin-top: 0;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(16, 36, 64, 0.14);
+            border-bottom: 1px solid rgba(16, 36, 64, 0.14);
+            border-radius: 14px;
+            color: var(--news-ink);
+            min-height: 56px;
+        }
+
+        .filter-header .input-box:focus {
+            border-color: rgba(185, 149, 59, 0.6);
+            box-shadow: 0 0 0 4px rgba(185, 149, 59, 0.12);
+        }
+
+        .news-search-status {
+            margin: 0 0 22px;
+            color: var(--news-muted);
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+        }
+
+        .news-command-deck {
+            display: grid;
+            grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+            gap: 22px;
+            margin-bottom: 28px;
+        }
+
+        .news-brief-panel,
+        .watchlist-panel,
+        .sidebar-panel {
+            border-radius: 22px;
+            border: 1px solid rgba(185, 149, 59, 0.16);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 238, 222, 0.98));
+            box-shadow: 0 20px 46px rgba(16, 36, 64, 0.08);
+        }
+
+        .news-brief-panel,
+        .watchlist-panel {
+            padding: 22px;
+        }
+
+        .panel-kicker {
+            color: var(--news-muted);
+            font-size: 0.8rem;
+            margin-bottom: 14px;
+        }
+
+        .editorial-brief {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            line-height: 1.38;
+            color: var(--news-ink);
+        }
+
+        .editorial-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .editorial-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(16, 36, 64, 0.06);
+            color: var(--news-ink);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .watchlist-rail {
+            display: grid;
+            gap: 12px;
+        }
+
+        .watchlist-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 14px;
+            align-items: start;
+            padding-top: 12px;
+            border-top: 1px solid var(--news-line);
+        }
+
+        .watchlist-item:first-child,
+        .watchlist-empty {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .watchlist-index {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.35rem;
+            color: var(--antique-gold);
+            line-height: 1;
+        }
+
+        .watchlist-topline {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+            color: var(--news-muted);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .watchlist-link {
+            display: block;
+            color: var(--news-ink);
+            text-decoration: none;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+
+        .watchlist-link:hover {
+            color: var(--antique-gold);
+        }
+
+        .watchlist-empty {
+            color: var(--news-muted);
+            line-height: 1.6;
+        }
+
+        .news-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.52fr) minmax(320px, 0.84fr);
+            gap: 26px;
+            align-items: start;
+        }
+
+        .news-section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 16px;
+            padding-bottom: 18px;
+            margin-bottom: 18px;
+            border-bottom: 3px solid rgba(16, 36, 64, 0.12);
+        }
+
+        .news-section-heading h2 {
+            margin: 8px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--news-ink);
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+        }
+
+        .section-slug {
+            color: var(--news-muted);
+            font-size: 0.8rem;
+        }
+
+        .feed-count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(16, 36, 64, 0.06);
+            color: var(--news-ink);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .news-loader-shell {
+            display: none;
+            place-items: center;
+            gap: 16px;
+            padding: 48px 0 26px;
+            text-align: center;
+            color: var(--news-muted);
+        }
+
+        .news-loader-shell p {
+            margin: 0;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-size: 0.88rem;
+        }
+
+        .broadcast-feed {
+            display: grid;
+            gap: 18px;
+            transition: opacity 0.24s ease;
+        }
+
+        .broadcast-feed[data-loading="true"] {
+            opacity: 0.76;
+        }
+
+        .news-item,
+        .news-skeleton {
+            position: relative;
+            display: grid;
+            grid-template-columns: 138px minmax(0, 1fr);
+            gap: 20px;
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(185, 149, 59, 0.16);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 236, 218, 0.98));
+            box-shadow: 0 20px 42px rgba(16, 36, 64, 0.08);
+            animation: newsSlideIn 0.45s ease both;
+            overflow: hidden;
+        }
+
+        .news-item::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--antique-gold), rgba(16, 36, 64, 0.88));
+        }
+
+        .news-item[data-tone="high"]::before {
+            background: linear-gradient(180deg, #ff7a7a, #a11e2e);
+        }
+
+        .news-item[data-tone="moderate"]::before {
+            background: linear-gradient(180deg, #f6c569, #bd6a00);
         }
 
         .news-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            align-items: center;
-            text-align: center;
+            display: grid;
+            gap: 10px;
+            align-content: start;
+            padding: 14px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(16, 36, 64, 0.06), rgba(16, 36, 64, 0.02));
+            border: 1px solid rgba(16, 36, 64, 0.08);
+            text-align: left;
         }
 
         .source-badge {
-            font-weight: 800;
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--imperial-indigo);
-            border: 1.5px solid var(--imperial-indigo);
-            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
-            max-width: 100%;
+            min-height: 42px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(16, 36, 64, 0.9);
+            color: #fff;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
             overflow-wrap: anywhere;
             word-break: break-word;
-            line-height: 1.15;
+            line-height: 1.35;
+        }
+
+        .news-date {
+            color: var(--news-ink);
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.05rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .news-relative {
+            color: var(--news-muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .news-content {
+            min-width: 0;
+        }
+
+        .story-topline,
+        .story-tag-row,
+        .story-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .story-topline {
+            justify-content: space-between;
+            margin-bottom: 12px;
         }
 
         .live-tag {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
             color: var(--broadcast-red);
             font-weight: 900;
-            font-size: 0.7rem;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
         }
 
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--broadcast-red);
-            border-radius: 50%;
-            animation: pulse-red 1s infinite;
+        .story-rank {
+            color: var(--news-muted);
+            font-size: 0.74rem;
         }
 
-        @keyframes pulse-red {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.5);
-                opacity: 0.5;
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
+        .risk-pill,
+        .impact-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         .risk-pill {
-            padding: 3px 10px;
-            font-size: 0.65rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: white;
-            display: inline-block;
-            margin-bottom: 10px;
+            color: #fff;
         }
 
         .risk-high {
@@ -144,23 +793,280 @@
             background: var(--low-risk);
         }
 
-        .broadcast-ticker {
-            background: #000;
-            color: #fff;
-            padding: 12px 0;
-            font-family: 'Noto Sans', sans-serif;
-            font-weight: 800;
-            font-size: 1.1rem;
-            border-top: 3px solid var(--antique-gold);
-            overflow: hidden;
-            white-space: nowrap;
-            position: relative;
+        .impact-tag {
+            background: rgba(16, 36, 64, 0.08);
+            color: var(--news-ink);
         }
 
-        .ticker-inner {
+        .news-headline {
+            display: block;
+            margin: 14px 0 10px;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.72rem;
+            font-weight: 900;
+            line-height: 1.2;
+            color: var(--news-ink);
+            text-decoration: none;
+        }
+
+        .news-headline:hover {
+            color: var(--antique-gold);
+        }
+
+        .summary-news {
+            margin: 0;
+            color: var(--news-muted);
+            line-height: 1.7;
+            font-size: 1rem;
+        }
+
+        .story-footer {
+            justify-content: space-between;
+            margin-top: 18px;
+            color: var(--news-muted);
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .story-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(16, 36, 64, 0.12);
+            color: var(--news-ink);
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .story-link:hover {
+            border-color: rgba(185, 149, 59, 0.4);
+            color: var(--antique-gold);
+        }
+
+        .news-skeleton {
+            animation: none;
+        }
+
+        .skeleton-column,
+        .skeleton-line {
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(16, 36, 64, 0.06), rgba(16, 36, 64, 0.14), rgba(16, 36, 64, 0.06));
+            background-size: 200% 100%;
+            animation: shimmer 1.3s linear infinite;
+        }
+
+        .skeleton-column {
+            height: 144px;
+            border-radius: 18px;
+        }
+
+        .skeleton-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .skeleton-line {
+            height: 14px;
+        }
+
+        .skeleton-line.wide {
+            width: 92%;
+            height: 24px;
+        }
+
+        .skeleton-line.medium {
+            width: 78%;
+        }
+
+        .skeleton-line.short {
+            width: 58%;
+        }
+
+        .news-empty-state {
+            padding: 44px 26px;
+            border-radius: 22px;
+            border: 1px dashed rgba(16, 36, 64, 0.16);
+            background: rgba(255, 255, 255, 0.74);
+            text-align: center;
+            color: var(--news-muted);
+        }
+
+        .news-empty-state h3 {
+            margin: 0 0 10px;
+            font-family: 'Playfair Display', serif;
+            color: var(--news-ink);
+        }
+
+        .news-empty-state p {
+            margin: 0;
+            line-height: 1.7;
+        }
+
+        .news-empty-note {
+            margin-top: 14px;
+            font-size: 0.82rem;
+        }
+
+        .news-empty-state details {
+            margin-top: 16px;
+            text-align: left;
             display: inline-block;
-            animation: tickerSwipe 80s linear infinite;
-            /* Professional reading speed */
+            max-width: 860px;
+        }
+
+        .news-sidebar {
+            display: grid;
+            gap: 22px;
+        }
+
+        .sidebar-panel {
+            overflow: hidden;
+        }
+
+        .sidebar-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, var(--news-night), var(--news-night-soft));
+            color: #fff;
+        }
+
+        .sidebar-panel-header h3 {
+            margin: 0;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-panel-header span {
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-panel-header-gold {
+            background: linear-gradient(135deg, #8f6721, #c79f4b);
+        }
+
+        .sidebar-panel-body {
+            padding: 6px 20px 10px;
+        }
+
+        .sidebar-panel-body-tight {
+            padding: 0 20px 8px;
+        }
+
+        .circular-item {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--news-line);
+        }
+
+        .circular-item:last-child {
+            border-bottom: 0;
+        }
+
+        .circular-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .circular-id {
+            color: var(--antique-gold);
+            font-size: 0.76rem;
+        }
+
+        .circular-cat {
+            color: var(--news-muted);
+            font-size: 0.72rem;
+        }
+
+        .circular-link {
+            display: block;
+            color: var(--news-ink);
+            text-decoration: none;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .circular-link:hover {
+            color: var(--antique-gold);
+        }
+
+        .circular-date {
+            margin-top: 10px;
+            color: var(--news-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .archive-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+
+        .archive-table td {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--news-line);
+            vertical-align: top;
+        }
+
+        .archive-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .archive-date {
+            color: var(--news-ink);
+            font-size: 0.92rem;
+            white-space: nowrap;
+        }
+
+        .archive-title {
+            color: var(--news-muted);
+            line-height: 1.55;
+            padding: 0 12px;
+        }
+
+        .archive-tag {
+            display: inline-flex;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(16, 36, 64, 0.08);
+            color: var(--news-ink);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.56);
+            }
+
+            70% {
+                transform: scale(1.06);
+                box-shadow: 0 0 0 10px rgba(230, 57, 70, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(230, 57, 70, 0);
+            }
         }
 
         @keyframes tickerSwipe {
@@ -173,61 +1079,120 @@
             }
         }
 
-        .breaking-label {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            background: var(--broadcast-red);
-            color: #fff;
-            padding: 0 20px;
-            display: flex;
-            align-items: center;
-            font-weight: 900;
-            font-style: italic;
-            z-index: 10;
-            box-shadow: 10px 0 20px rgba(0, 0, 0, 0.5);
+        @keyframes newsSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .impact-tag {
-            font-size: 0.65rem;
-            font-weight: 800;
-            background: var(--imperial-indigo);
-            color: var(--antique-gold);
-            padding: 3px 10px;
-            text-transform: uppercase;
-            display: inline-block;
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
 
-        /* RBI Section - News style */
-        .circular-item {
-            padding: 20px 0;
-            border-bottom: 1px dotted var(--border-gold);
+        @media (max-width: 1100px) {
+            .banking-hero-grid,
+            .news-command-deck,
+            .news-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-brief-list,
+            .news-stats-bar {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .anchor-meta-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .archive-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
+        @media (max-width: 768px) {
+            .banking-hero {
+                padding-top: 42px;
+            }
+
+            .hero-brief-list,
+            .news-stats-bar,
+            .filter-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .news-item,
+            .news-skeleton {
+                grid-template-columns: 1fr;
+            }
+
+            .broadcast-ticker {
+                min-height: 50px;
+            }
+
+            .breaking-label {
+                position: relative;
+                width: 100%;
+                justify-content: flex-start;
+                padding: 12px 18px 0;
+                background: transparent;
+                box-shadow: none;
+                color: var(--antique-gold);
+            }
+
+            .ticker-track {
+                padding-left: 0;
+            }
+
+            .ticker-inner {
+                padding: 8px 18px 14px;
+                min-height: 0;
+                font-size: 0.86rem;
+            }
+
+            .news-section-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .news-headline,
+            .lead-story-card h2,
+            .editorial-brief {
+                font-size: 1.45rem;
+            }
+
+            .story-footer {
+                align-items: flex-start;
+            }
         }
 
-        .archive-table th {
-            text-align: left;
-            padding: 15px;
-            background: var(--imperial-indigo);
-            color: white;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-        }
-
-        .archive-table td {
-            padding: 15px;
-            border-bottom: 1px solid var(--sandstone-ash);
+        @media (prefers-reduced-motion: reduce) {
+            .live-dot,
+            .ticker-inner,
+            .skeleton-column,
+            .skeleton-line,
+            .news-item,
+            .news-skeleton {
+                animation: none !important;
+            }
         }
     </style>
 </head>
 
-<body style="background: var(--manuscript-paper);">
+<body class="banking-news-page">
     <header class="navbar">
         <div class="nav-container">
             <a href="index.html" class="brand">
@@ -245,99 +1210,173 @@
         </div>
     </header>
 
-    <main>
-        <!-- NEWS BROADCAST HEADER -->
-        <div class="banking-hero">
-            <h1>
-                BANKING <span style="color: var(--antique-gold);">WORLD</span>
-            </h1>
-            <p
-                style="color: var(--antique-gold); font-weight: 900; letter-spacing: 5px; text-transform: uppercase; margin-top: 15px;">
-                Institutional Regulatory Intelligence • 24/7 LIVE
-            </p>
-            <p
-                style="color: rgba(255,255,255,0.78); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-top: 14px; font-size: 0.8rem;">
-                Sources: News • RBI circulars • MCA filings • e-Courts / NCLT
-            </p>
-        </div>
+    <main class="banking-news-main">
+        <section class="banking-hero">
+            <div class="container banking-hero-grid">
+                <div class="banking-hero-copy">
+                    <div class="channel-kicker">
+                        <span class="live-dot"></span>
+                        Arthashastra Financial Network
+                    </div>
+                    <h1>BANKING <span>WORLD</span></h1>
+                    <p class="hero-strap">Institutional Regulatory Intelligence • 24/7 Live Desk</p>
+                    <p class="hero-context">
+                        A newsroom-style command center for RBI directives, compliance actions, liquidity stress, and
+                        borrower-impacting headlines that matter to credit teams.
+                    </p>
+                    <div class="hero-brief-list">
+                        <article class="brief-card">
+                            <span>Coverage</span>
+                            <strong>Banking sector, RBI, MCA filings, and court-linked corporate signals.</strong>
+                        </article>
+                        <article class="brief-card">
+                            <span>Lens</span>
+                            <strong>Credit risk, compliance pressure, liquidity stress, and reputation impact.</strong>
+                        </article>
+                        <article class="brief-card">
+                            <span>Purpose</span>
+                            <strong>Give underwriters and judges a fast, banker-friendly view of what matters now.</strong>
+                        </article>
+                    </div>
+                </div>
+                <aside class="hero-anchor-card">
+                    <div class="anchor-card-header">
+                        <span>Anchor Desk</span>
+                        <span id="newsTimestamp">Initializing live desk...</span>
+                    </div>
+                    <div id="leadStoryCard" class="lead-story-card">
+                        <div class="lead-story-placeholder">
+                            <div class="lead-story-kicker">Opening Bulletin</div>
+                            <h2>Preparing the newsroom opener</h2>
+                            <p>Cached headlines and live regulatory signals will appear here first so the page feels
+                                active immediately.</p>
+                        </div>
+                    </div>
+                    <div class="anchor-meta-grid">
+                        <div>
+                            <span>Signal Mix</span>
+                            <strong id="leadSignalMix">Awaiting live bulletin</strong>
+                        </div>
+                        <div>
+                            <span>Feed Mode</span>
+                            <strong id="feedHeartbeat">Warming cache</strong>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
 
-        <!-- STATS OVERLAY -->
         <div class="news-stats-bar">
-            <span>🔴 HIGH RISK ALERT: <span id="highRiskCount">0</span></span>
-            <span>⚖️ COMPLIANCE ACTIONS: <span id="complianceCount">0</span></span>
-            <span>💧 LIQUIDITY ALERTS: <span id="liquidityCount">0</span></span>
+            <article class="stat-chip">
+                <span class="stat-label">High Risk Alerts</span>
+                <strong id="highRiskCount">0</strong>
+            </article>
+            <article class="stat-chip">
+                <span class="stat-label">Compliance Actions</span>
+                <strong id="complianceCount">0</strong>
+            </article>
+            <article class="stat-chip">
+                <span class="stat-label">Liquidity Watch</span>
+                <strong id="liquidityCount">0</strong>
+            </article>
+            <article class="stat-chip stat-chip-wide">
+                <span class="stat-label">Desk Note</span>
+                <strong id="newsDeskNote">Connecting to the Arthashastra newsroom feed.</strong>
+            </article>
         </div>
 
-        <!-- TICKER -->
         <div class="broadcast-ticker">
-            <div class="breaking-label">LIVE UPDATES</div>
-            <div class="ticker-inner" id="tickerContent">
-                FETCHING LATEST MARKET MANUSCRIPTS... • RBI REPOSITORY SCAN IN PROGRESS... • CIVILIZATIONAL RISK
-                ANALYSIS LIVE...
+            <div class="breaking-label">Flash Line</div>
+            <div class="ticker-track">
+                <div class="ticker-inner" id="tickerContent">
+                    <span class="ticker-pill">Fetching latest market manuscripts</span>
+                    <span class="ticker-pill">Scanning RBI and banking updates</span>
+                    <span class="ticker-pill">Preparing live Arthashastra bulletin</span>
+                </div>
             </div>
         </div>
 
         <div class="container news-shell">
-
-            <!-- FILTER HUD -->
             <div class="filter-header">
                 <div class="filter-controls">
                     <input type="text" id="bankSearch" class="input-box"
-                        placeholder="Search by Financial Institution..."
-                        style="margin-top: 0; background: transparent; border-bottom: 2px solid var(--imperial-indigo);">
-                    <select id="categoryFilter" class="input-box" style="margin-top: 0; width: 200px;">
+                        placeholder="Search bank, RBI, NBFC, enforcement, liquidity..." />
+                    <select id="categoryFilter" class="input-box">
                         <option value="all">ALL FEEDS</option>
                         <option value="rbi">REGULATORY</option>
                         <option value="risk">RISK ALERTS</option>
                         <option value="compliance">COMPLIANCE</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" id="refreshBtn">RESCAN REALM</button>
+                <button class="btn btn-primary" id="refreshBtn">REFRESH FEED</button>
             </div>
             <div id="newsSearchStatus" class="news-search-status" aria-live="polite">Tracking the broad Indian banking sector feed.</div>
 
+            <section class="news-command-deck">
+                <article class="news-brief-panel">
+                    <div class="panel-kicker">Editorial Brief</div>
+                    <p id="editorialBrief" class="editorial-brief">
+                        The desk is preparing a banker-ready summary from the latest banking and regulatory feed.
+                    </p>
+                    <div id="editorialTags" class="editorial-tags">
+                        <span class="editorial-tag">Live bulletin pending</span>
+                        <span class="editorial-tag">RBI watch</span>
+                        <span class="editorial-tag">Credit signals</span>
+                    </div>
+                </article>
+                <aside class="watchlist-panel">
+                    <div class="panel-kicker">Watchlist</div>
+                    <div id="watchlistRail" class="watchlist-rail">
+                        <div class="watchlist-empty">Lead risk and regulatory signals will appear here once the desk syncs.</div>
+                    </div>
+                </aside>
+            </section>
+
             <div class="news-layout">
-
-                <!-- BROADCAST FEED -->
-                <div>
-                    <div
-                        style="border-bottom: 4px solid var(--imperial-indigo); padding-bottom: 10px; margin-bottom: 20px;">
-                        <h2
-                            style="font-family: 'Playfair Display', serif; color: var(--imperial-indigo); font-size: 2rem; margin: 0; display: flex; align-items: center; gap: 10px;">
-                            <div class="live-dot"></div> MAIN BROADCAST
-                        </h2>
+                <section class="news-feed-column">
+                    <div class="news-section-heading">
+                        <div>
+                            <div class="section-slug">Main Broadcast</div>
+                            <h2><span class="live-dot"></span> Live newsroom feed</h2>
+                        </div>
+                        <div class="feed-count-badge" id="feedCountBadge">0 stories on desk</div>
                     </div>
 
-                    <div id="loader" style="text-align: center; padding: 100px 0; display: none;">
-                        <div class="loading-spinner"
-                            style="margin: 0 auto 20px; width: 60px; height: 60px; border-width: 6px;"></div>
-                        <p style="font-weight: 900; letter-spacing: 2px;">SYNCHRONIZING WITH FINANCIAL HERALDS...</p>
+                    <div id="loader" class="news-loader-shell">
+                        <div class="loading-spinner" style="margin: 0 auto; width: 56px; height: 56px; border-width: 6px;"></div>
+                        <p>Synchronizing with financial heralds</p>
                     </div>
 
-                    <div id="newsGrid">
+                    <div id="newsGrid" class="broadcast-feed">
                         <!-- Broadcast items injected here -->
                     </div>
-                </div>
+                </section>
 
-                <!-- REGULATORY SIDEBAR -->
-                <div class="news-sidebar">
-                    <div style="background: var(--imperial-indigo); color: white; padding: 15px; margin-bottom: 25px;">
-                        <h3 style="margin:0; font-size: 1.2rem; text-transform: uppercase;">RBI DIRECTIVES</h3>
-                    </div>
-                    <div id="circularsList">
-                        <!-- Circulars -->
-                    </div>
+                <aside class="news-sidebar">
+                    <section class="sidebar-panel">
+                        <div class="sidebar-panel-header">
+                            <h3>RBI Directives</h3>
+                            <span>Desk File</span>
+                        </div>
+                        <div class="sidebar-panel-body" id="circularsList">
+                            <!-- Circulars -->
+                        </div>
+                    </section>
 
-                    <div style="background: var(--antique-gold); color: white; padding: 15px; margin: 50px 0 25px 0;">
-                        <h3 style="margin:0; font-size: 1.2rem; text-transform: uppercase;">HERALD ARCHIVE</h3>
-                    </div>
-                    <table class="archive-table">
-                        <tbody id="archiveBody">
-                            <!-- Archive rows -->
-                        </tbody>
-                    </table>
-                </div>
-
+                    <section class="sidebar-panel">
+                        <div class="sidebar-panel-header sidebar-panel-header-gold">
+                            <h3>Herald Archive</h3>
+                            <span>Filed Notes</span>
+                        </div>
+                        <div class="sidebar-panel-body sidebar-panel-body-tight">
+                            <table class="archive-table">
+                                <tbody id="archiveBody">
+                                    <!-- Archive rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </aside>
             </div>
         </div>
     </main>
@@ -385,7 +1424,7 @@
     </footer>
 
     <script src="script.js?v=6"></script>
-    <script src="news_engine.js?v=9"></script>
+    <script src="news_engine.js?v=10"></script>
 </body>
 
 </html>

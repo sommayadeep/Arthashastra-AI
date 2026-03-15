@@ -1,43 +1,47 @@
-// Arthashastra AI – Banking News & Regulatory Intelligence Engine
-// Architected for real-time monitoring of the Indian Banking Ecosystem
+// Arthashastra AI - Banking News & Regulatory Intelligence Engine
+// Styled as a live newsroom while staying fast on first paint.
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Selectors
-    const newsGrid = document.querySelector('#newsGrid');
-    const circularsList = document.querySelector('#circularsList');
-    const archiveBody = document.querySelector('#archiveBody');
-    const loader = document.querySelector('#loader');
-    const refreshBtn = document.querySelector('#refreshBtn');
-    const tickerContent = document.querySelector('#tickerContent');
-    const searchStatus = document.querySelector('#newsSearchStatus');
+    const q = (selector) => document.querySelector(selector);
 
-    // Filters
-    const bankSearch = document.querySelector('#bankSearch');
-    const categoryFilter = document.querySelector('#categoryFilter');
-
-    // Heatmap Counters
-    const highRiskCount = document.querySelector('#highRiskCount');
-    const complianceCount = document.querySelector('#complianceCount');
-    const liquidityCount = document.querySelector('#liquidityCount');
+    const newsGrid = q('#newsGrid');
+    const circularsList = q('#circularsList');
+    const archiveBody = q('#archiveBody');
+    const loader = q('#loader');
+    const refreshBtn = q('#refreshBtn');
+    const tickerContent = q('#tickerContent');
+    const searchStatus = q('#newsSearchStatus');
+    const bankSearch = q('#bankSearch');
+    const categoryFilter = q('#categoryFilter');
+    const highRiskCount = q('#highRiskCount');
+    const complianceCount = q('#complianceCount');
+    const liquidityCount = q('#liquidityCount');
+    const leadStoryCard = q('#leadStoryCard');
+    const watchlistRail = q('#watchlistRail');
+    const newsTimestamp = q('#newsTimestamp');
+    const leadSignalMix = q('#leadSignalMix');
+    const feedHeartbeat = q('#feedHeartbeat');
+    const newsDeskNote = q('#newsDeskNote');
+    const editorialBrief = q('#editorialBrief');
+    const editorialTags = q('#editorialTags');
+    const feedCountBadge = q('#feedCountBadge');
 
     let GLOBAL_NEWS = [];
     let LAST_NEWS_NOTE = null;
     let LAST_NEWS_DEBUG = null;
     let ACTIVE_QUERY = '';
     let searchDebounce = null;
+    let LAST_FEED_SOURCE = 'idle';
+    let LAST_SYNCED_AT = null;
 
-    // Feed configuration
-    // - LIVE: what gets the "LIVE BROADCAST" tag
-    // - FEED: how far back we pull to ensure we always have enough items
-    // - FETCH: how many items we fetch from backend
-    // - DISPLAY: how many latest items we show (fills with older items if needed)
     const LIVE_WINDOW_HOURS = 24;
-    const FEED_WINDOW_HOURS = 24 * 7; // 7 days
-    const FEED_FETCH_LIMIT = 30;
-    const FEED_DISPLAY_LIMIT = 9;
+    const FEED_WINDOW_HOURS = 24 * 5;
+    const FEED_FETCH_LIMIT = 24;
+    const FEED_DISPLAY_LIMIT = 8;
+    const FRESH_CACHE_TTL_MS = 3 * 60 * 1000;
 
-    function escapeHtml(s) {
-        return String(s ?? '')
+    function escapeHtml(value) {
+        return String(value ?? '')
             .replaceAll('&', '&amp;')
             .replaceAll('<', '&lt;')
             .replaceAll('>', '&gt;')
@@ -45,14 +49,23 @@ document.addEventListener('DOMContentLoaded', () => {
             .replaceAll("'", '&#039;');
     }
 
+    function safeUrl(url) {
+        const value = String(url || '').trim();
+        return /^https?:\/\//i.test(value) ? value : '#';
+    }
+
     function normalizeBaseUrl(url) {
-        return (url || '').trim().replace(/\/+$/, '');
+        return String(url || '').trim().replace(/\/+$/, '');
+    }
+
+    function isLocalFrontend() {
+        return /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
     }
 
     function setRefreshState(loading) {
         if (!refreshBtn) return;
         refreshBtn.disabled = loading;
-        refreshBtn.textContent = loading ? 'SYNCING...' : 'RESCAN REALM';
+        refreshBtn.textContent = loading ? 'SYNCING...' : 'REFRESH FEED';
         refreshBtn.style.opacity = loading ? '0.75' : '1';
     }
 
@@ -61,34 +74,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getBackendBase() {
-        const stored = localStorage.getItem('arthashastra_backend_base');
-        if (stored) return normalizeBaseUrl(stored);
-        // Default (Render)
-        return 'https://ashstrashastra-backend.onrender.com';
+        const stored = normalizeBaseUrl(localStorage.getItem('arthashastra_backend_base'));
+        if (stored) return stored;
+        return isLocalFrontend() ? '' : 'https://ashstrashastra-backend.onrender.com';
     }
 
     function getBackendCandidates() {
         const candidates = [];
-        const stored = normalizeBaseUrl(localStorage.getItem('arthashastra_backend_base'));
-        if (stored) candidates.push(stored);
+        const preferred = getBackendBase();
+        if (preferred) candidates.push(preferred);
 
-        // Known Render service URLs (try a few common project names)
-        candidates.push('https://ashstrashastra-backend.onrender.com');
-        candidates.push('https://ashstrashastra-ai-backend.onrender.com');
-        candidates.push('https://arthashastra-ai-backend.onrender.com');
-
-        // Same-origin (for setups with a proxy/rewrite)
-        candidates.push('');
-
-        // Local dev backend
-        candidates.push('http://localhost:5050');
-        candidates.push('http://127.0.0.1:5050');
+        if (!isLocalFrontend()) {
+            candidates.push('');
+            candidates.push('https://ashstrashastra-ai-backend.onrender.com');
+            candidates.push('https://arthashastra-ai-backend.onrender.com');
+        } else {
+            candidates.push('');
+            candidates.push('http://localhost:5050');
+            candidates.push('http://127.0.0.1:5050');
+        }
 
         return [...new Set(candidates.map(normalizeBaseUrl))];
     }
 
-    // ★ Cache version — increment to bust old stale caches
-    const CACHE_VERSION = 'v5';
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } catch (err) {
+            if (err?.name === 'AbortError') {
+                const timeoutErr = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+                timeoutErr.name = 'TimeoutError';
+                throw timeoutErr;
+            }
+            throw err;
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
+    }
+
+    const CACHE_VERSION = 'v6';
     const cacheVersionKey = 'banking_news_version';
     if (localStorage.getItem(cacheVersionKey) !== CACHE_VERSION) {
         localStorage.removeItem('banking_news_cache');
@@ -96,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(cacheVersionKey, CACHE_VERSION);
     }
 
-    // --- HELPER: Relative time label ---
     function getRelativeLabel(dateObj) {
         const now = new Date();
         const diffMs = now - dateObj;
@@ -113,297 +138,499 @@ document.addEventListener('DOMContentLoaded', () => {
         return dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    function isLiveWindow(dateObj, hours = 24) {
-        const now = Date.now();
-        return (now - dateObj.getTime()) <= hours * 60 * 60 * 1000;
+    function isLiveWindow(dateObj, hours = LIVE_WINDOW_HOURS) {
+        return (Date.now() - dateObj.getTime()) <= hours * 60 * 60 * 1000;
     }
 
-    // --- 1. AI RISK IMPACT ENGINE ---
+    function formatDeskTimestamp(dateObj) {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'Awaiting sync';
+        return `Updated ${dateObj.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
+        })}`;
+    }
+
+    function setDeskNote(message) {
+        if (newsDeskNote) newsDeskNote.textContent = message;
+    }
+
+    function setHeartbeat(message) {
+        if (feedHeartbeat) feedHeartbeat.textContent = message;
+    }
+
+    function normalizeNewsItem(raw, index = 0) {
+        const fallbackDate = new Date();
+        const rawDate = raw?.rawDateISO
+            ? new Date(raw.rawDateISO)
+            : new Date(raw?.published_at || raw?.pubDate || raw?.rawDate || fallbackDate);
+        const safeDate = Number.isNaN(rawDate.getTime()) ? fallbackDate : rawDate;
+        const riskLevel = String(
+            raw?.riskLevel ||
+            raw?.risk_impact_level ||
+            raw?.level ||
+            'low'
+        ).toLowerCase();
+        const normalizedLevel = riskLevel === 'high' ? 'high' : (riskLevel === 'moderate' ? 'moderate' : 'low');
+        const description = String(raw?.description || raw?.summary || '').trim();
+
+        return {
+            id: raw?.id || `news-${safeDate.getTime()}-${index}`,
+            title: raw?.title || 'Untitled banking update',
+            source: raw?.source || 'Live feed',
+            description: description || 'No editor summary is available yet for this signal.',
+            date: safeDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+            rawDate: safeDate,
+            rawDateISO: safeDate.toISOString(),
+            relativeLabel: getRelativeLabel(safeDate),
+            isLive: isLiveWindow(safeDate),
+            link: safeUrl(raw?.link),
+            riskLevel: normalizedLevel,
+            impactType: raw?.impactType || raw?.impact_type || 'Informational',
+        };
+    }
+
+    function hydrateNewsItems(items) {
+        return (Array.isArray(items) ? items : [])
+            .map((item, index) => normalizeNewsItem(item, index))
+            .sort((a, b) => b.rawDate - a.rawDate);
+    }
+
+    function readCachedNews() {
+        try {
+            return hydrateNewsItems(JSON.parse(localStorage.getItem('banking_news_cache') || '[]'));
+        } catch {
+            return [];
+        }
+    }
+
+    function writeCachedNews(items) {
+        try {
+            localStorage.setItem('banking_news_cache', JSON.stringify(items));
+            localStorage.setItem('banking_news_cache_time', Date.now().toString());
+        } catch {
+            // Ignore cache write failures.
+        }
+    }
+
+    function setLoadingState(loading, { preserveFeed = false } = {}) {
+        setRefreshState(loading);
+        if (loader) loader.style.display = loading && !preserveFeed ? 'grid' : 'none';
+        if (newsGrid) newsGrid.dataset.loading = loading ? 'true' : 'false';
+    }
+
+    function renderFeedSkeleton(count = 4) {
+        if (!newsGrid) return;
+        newsGrid.innerHTML = Array.from({ length: count }, (_, index) => `
+            <article class="news-skeleton" style="animation-delay:${index * 80}ms;">
+                <div class="skeleton-column"></div>
+                <div class="skeleton-stack">
+                    <div class="skeleton-line medium"></div>
+                    <div class="skeleton-line wide"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line short"></div>
+                </div>
+            </article>
+        `).join('');
+    }
+
     function analyzeRisk(item) {
-        const text = (item.title + ' ' + item.content).toLowerCase();
-
-        let riskLevel = 'low';
-        let impactType = 'Informational';
-        let keywordsFound = [];
-
+        const text = `${item.title || ''} ${item.content || ''}`.toLowerCase();
         const riskMatrix = {
             high: ['penalty', 'fraud', 'scam', 'npa', 'default', 'violation', 'fine', 'regulatory action', 'liquidation', 'bad loans', 'pmla'],
             moderate: ['merger', 'acquisition', 'rate hike', 'downgrade', 'liquidity', 'compliance failure', 'capital adequacy', 'bad debt', 'investigation'],
-            informational: ['guidelines', 'circular', 'new service', 'growth', 'digital', 'lending', 'appointment', 'results']
         };
 
-        // Detect keywords
-        [...riskMatrix.high, ...riskMatrix.moderate].forEach(kw => {
-            if (text.includes(kw)) keywordsFound.push(kw);
-        });
+        let riskLevel = 'low';
+        let impactType = 'Informational';
 
-        if (riskMatrix.high.some(kw => text.includes(kw))) {
+        if (riskMatrix.high.some((kw) => text.includes(kw))) {
             riskLevel = 'high';
             impactType = 'Reputation/Compliance';
-        } else if (riskMatrix.moderate.some(kw => text.includes(kw))) {
+        } else if (riskMatrix.moderate.some((kw) => text.includes(kw))) {
             riskLevel = 'moderate';
             impactType = 'Operational/Credit';
         }
 
-        // Refine impact based on keywords
         if (text.includes('liquidity')) impactType = 'Liquidity Impact';
         if (text.includes('capital') || text.includes('adequacy')) impactType = 'Capital Adequacy';
         if (text.includes('kyc') || text.includes('rbi')) impactType = 'Compliance Impact';
         if (text.includes('loan') || text.includes('npa')) impactType = 'Credit Risk';
 
-        return { level: riskLevel, impact: impactType, kw: keywordsFound };
+        return { level: riskLevel, impact: impactType };
     }
 
-    // --- 2. DYNAMIC NEWS FETCH (Backend RSS) ---
-    async function fetchBankingNews(query = '') {
-        const cacheKey = 'banking_news_cache';
-        const cacheTime = localStorage.getItem(cacheKey + '_time');
-        const cachedAny = (() => {
-            try {
-                const raw = localStorage.getItem(cacheKey);
-                const parsed = raw ? JSON.parse(raw) : null;
-                return Array.isArray(parsed) ? parsed : null;
-            } catch {
-                return null;
-            }
-        })();
+    async function fetchBankingNews(query = '', { forceRefresh = false } = {}) {
+        const cacheTime = Number(localStorage.getItem('banking_news_cache_time') || '0');
+        const cachedAny = readCachedNews();
 
-        // Use cache if not expired (60 seconds; keep it truly live)
-        if (!query && cacheTime && (Date.now() - parseInt(cacheTime) < 60 * 1000)) {
-            const cached = JSON.parse(localStorage.getItem(cacheKey));
-            if (cached && cached.length > 0) {
-                // Restore Date objects from cached ISO strings
-                cached.forEach(item => {
-                    item.rawDate = new Date(item.rawDateISO);
-                    item.relativeLabel = getRelativeLabel(item.rawDate);
-                    item.isLive = isLiveWindow(item.rawDate, LIVE_WINDOW_HOURS);
-                });
-                return cached;
-            }
+        if (!query && !forceRefresh && cacheTime && (Date.now() - cacheTime < FRESH_CACHE_TTL_MS) && cachedAny.length) {
+            LAST_FEED_SOURCE = 'cache';
+            LAST_SYNCED_AT = new Date(cacheTime);
+            LAST_NEWS_NOTE = 'Showing recently synced headlines from the newsroom cache.';
+            return cachedAny;
         }
 
-        if (loader) loader.style.display = 'block';
-        setRefreshState(true);
-        if (newsGrid) newsGrid.innerHTML = '';
+        let preserveFeed = Boolean(GLOBAL_NEWS.length || cachedAny.length || (newsGrid && newsGrid.children.length));
+        if (!preserveFeed) {
+            renderFeedSkeleton();
+            preserveFeed = true;
+        }
+        setLoadingState(true, { preserveFeed });
 
-        const searchQuery = query ? query : 'Indian Banking Sector';
-        const qs = `q=${encodeURIComponent(searchQuery)}&hours=${FEED_WINDOW_HOURS}&limit=${FEED_FETCH_LIMIT}`;
-        const apiUrls = getBackendCandidates().map(base => (base ? `${base}/api/news?${qs}` : `/api/news?${qs}`));
+        const timeoutMs = isLocalFrontend() ? 7000 : 12000;
+        const searchQuery = query || 'Indian Banking Sector';
+        const queryString = `q=${encodeURIComponent(searchQuery)}&hours=${FEED_WINDOW_HOURS}&limit=${FEED_FETCH_LIMIT}`;
+        const apiUrls = getBackendCandidates().map((base) => (base ? `${base}/api/news?${queryString}` : `/api/news?${queryString}`));
+        const attempts = [];
 
         try {
-            const attempts = [];
             for (const apiUrl of apiUrls) {
                 try {
-                    const res = await fetch(apiUrl, { cache: 'no-store' });
-                    if (!res.ok) {
-                        attempts.push({ url: apiUrl, error: `HTTP ${res.status}` });
+                    const response = await fetchWithTimeout(apiUrl, { cache: 'no-store' }, timeoutMs);
+                    if (!response.ok) {
+                        attempts.push({ url: apiUrl, error: `HTTP ${response.status}` });
                         continue;
                     }
-                    const data = await res.json();
 
-                    if (data.status === 'success' && Array.isArray(data.items)) {
-                        const items = data.items.map(item => {
-                            const pubDate = item.published_at ? new Date(item.published_at) : new Date(item.pubDate || Date.now());
-                            const analysis = {
-                                level: (item.risk_impact_level || 'Low').toLowerCase() === 'moderate' ? 'moderate' : ((item.risk_impact_level || 'Low').toLowerCase() === 'high' ? 'high' : 'low'),
-                                impact: item.impact_type || 'Informational'
-                            };
+                    const data = await response.json();
+                    if (data?.status === 'success' && Array.isArray(data.items)) {
+                        const items = hydrateNewsItems(data.items.map((item) => {
+                            const analysis = analyzeRisk({
+                                title: item.title || '',
+                                content: item.summary || '',
+                            });
+
                             return {
-                                id: Math.random().toString(36).substr(2, 9),
-                                title: item.title || '—',
+                                title: item.title || 'Untitled banking update',
                                 source: item.source || 'Google News',
-                                description: (item.summary || '').substring(0, 150) + ((item.summary || '').length > 150 ? '...' : ''),
-                                date: pubDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-                                rawDate: pubDate,
-                                rawDateISO: pubDate.toISOString(),
-                                relativeLabel: getRelativeLabel(pubDate),
-                                isLive: isLiveWindow(pubDate, LIVE_WINDOW_HOURS),
+                                description: item.summary || '',
+                                published_at: item.published_at || item.pubDate,
                                 link: item.link,
-                                riskLevel: analysis.level,
-                                impactType: analysis.impact
+                                riskLevel: item.risk_impact_level || analysis.level,
+                                impactType: item.impact_type || analysis.impact,
                             };
-                        });
+                        }));
 
-                        // ★ Sort by date: NEWEST FIRST (most recent news always on top)
-                        items.sort((a, b) => b.rawDate - a.rawDate);
-                        LAST_NEWS_NOTE = data.note || null;
+                        LAST_NEWS_NOTE = data.note || 'Live desk synced successfully.';
                         LAST_NEWS_DEBUG = attempts.length ? attempts : null;
+                        LAST_FEED_SOURCE = 'live';
+                        LAST_SYNCED_AT = new Date();
 
-                        if (!query) {
-                            localStorage.setItem(cacheKey, JSON.stringify(items));
-                            localStorage.setItem(cacheKey + '_time', Date.now().toString());
-                        }
-
+                        if (!query) writeCachedNews(items);
                         return items;
                     }
 
-                    attempts.push({ url: apiUrl, error: (data?.note || data?.message || 'Unexpected response') });
-                } catch (e) {
-                    attempts.push({ url: apiUrl, error: String(e?.message || e) });
+                    attempts.push({ url: apiUrl, error: data?.note || data?.message || 'Unexpected response' });
+                } catch (err) {
+                    attempts.push({ url: apiUrl, error: String(err?.message || err) });
                 }
             }
 
             LAST_NEWS_DEBUG = attempts.length ? attempts : null;
-            const best = attempts.find(a => a.error && a.error !== 'Failed to fetch') || attempts[0] || null;
-            LAST_NEWS_NOTE = best ? best.error : null;
+            const bestAttempt = attempts.find((attempt) => attempt.error && attempt.error !== 'Failed to fetch') || attempts[0] || null;
+            LAST_NEWS_NOTE = bestAttempt ? bestAttempt.error : 'No live headlines were returned.';
 
-            // Fallback: if backend is unreachable, show last cached headlines (even if stale)
-            if (!query && cachedAny && cachedAny.length > 0) {
-                cachedAny.forEach(item => {
-                    item.rawDate = new Date(item.rawDateISO);
-                    item.relativeLabel = getRelativeLabel(item.rawDate);
-                    item.isLive = isLiveWindow(item.rawDate, LIVE_WINDOW_HOURS);
-                });
-                LAST_NEWS_NOTE = `Backend unreachable. Showing cached headlines. (${LAST_NEWS_NOTE || 'No details'})`;
+            if (!query && cachedAny.length) {
+                LAST_FEED_SOURCE = 'stale-cache';
+                LAST_SYNCED_AT = cacheTime ? new Date(cacheTime) : new Date();
+                LAST_NEWS_NOTE = 'Live backend unreachable. Showing saved headlines so the desk stays useful.';
                 return cachedAny;
             }
-        } catch (e) {
-            console.error("Fetch failed", e);
-            LAST_NEWS_NOTE = String(e?.message || e);
+        } catch (err) {
+            LAST_NEWS_NOTE = String(err?.message || err);
         } finally {
-            if (loader) loader.style.display = 'none';
-            setRefreshState(false);
+            setLoadingState(false, { preserveFeed: true });
         }
+
+        LAST_FEED_SOURCE = 'empty';
+        if (!LAST_SYNCED_AT && cacheTime) LAST_SYNCED_AT = new Date(cacheTime);
         return [];
     }
 
     function filterVisibleNews(items) {
-        const val = categoryFilter?.value || 'all';
-        if (val === 'rbi') return items.filter(n => n.title.toLowerCase().includes('rbi') || n.impactType.includes('Compliance'));
-        if (val === 'risk') return items.filter(n => n.riskLevel === 'high' || n.impactType.includes('Credit'));
-        if (val === 'compliance') return items.filter(n => n.impactType.includes('Compliance'));
+        const selected = categoryFilter?.value || 'all';
+        if (selected === 'rbi') {
+            return items.filter((item) => item.title.toLowerCase().includes('rbi') || item.impactType.toLowerCase().includes('compliance'));
+        }
+        if (selected === 'risk') {
+            return items.filter((item) => item.riskLevel === 'high' || item.impactType.toLowerCase().includes('credit'));
+        }
+        if (selected === 'compliance') {
+            return items.filter((item) => item.impactType.toLowerCase().includes('compliance'));
+        }
         return items;
+    }
+
+    function getFeedModeLabel() {
+        if (LAST_FEED_SOURCE === 'live') return 'Live newsroom sync';
+        if (LAST_FEED_SOURCE === 'cache') return 'Fresh cached feed';
+        if (LAST_FEED_SOURCE === 'stale-cache') return 'Cached continuity mode';
+        if (LAST_FEED_SOURCE === 'empty') return 'Signal desk awaiting feed';
+        return 'Connecting to live desk';
+    }
+
+    function buildDeskSummary(items) {
+        if (!items.length) {
+            return 'The desk is standing by for verified banking and regulatory signals.';
+        }
+
+        const high = items.filter((item) => item.riskLevel === 'high').length;
+        const compliance = items.filter((item) => item.impactType.toLowerCase().includes('compliance')).length;
+        const liquidity = items.filter((item) => item.impactType.toLowerCase().includes('liquidity')).length;
+        const lead = items[0];
+        const cues = [];
+
+        if (high) cues.push(`${high} high-risk headline${high === 1 ? '' : 's'} on the desk`);
+        if (compliance) cues.push(`${compliance} compliance-driven signal${compliance === 1 ? '' : 's'}`);
+        if (liquidity) cues.push(`${liquidity} liquidity watch item${liquidity === 1 ? '' : 's'}`);
+        if (!cues.length) cues.push(`${items.length} banker-relevant update${items.length === 1 ? '' : 's'} tracked`);
+
+        return `${cues.join(', ')}. Lead focus: ${lead.impactType.toLowerCase()} from ${lead.source}.`;
+    }
+
+    function buildEditorialTags(items) {
+        if (!editorialTags) return;
+
+        const tags = [];
+        const pushTag = (value) => {
+            const text = String(value || '').trim();
+            if (!text || tags.includes(text) || tags.length >= 4) return;
+            tags.push(text);
+        };
+
+        if (ACTIVE_QUERY) pushTag(`Search: ${ACTIVE_QUERY}`);
+        items.slice(0, 3).forEach((item) => {
+            pushTag(item.impactType);
+            if (item.title.toLowerCase().includes('rbi')) pushTag('RBI watch');
+            if (item.riskLevel === 'high') pushTag('High risk');
+        });
+
+        if (!tags.length) {
+            pushTag('Live bulletin pending');
+            pushTag('RBI watch');
+            pushTag('Credit signals');
+        }
+
+        editorialTags.innerHTML = tags.map((tag) => `<span class="editorial-tag">${escapeHtml(tag)}</span>`).join('');
+    }
+
+    function renderLeadStory(items) {
+        if (!leadStoryCard) return;
+        const lead = items[0];
+
+        if (!lead) {
+            leadStoryCard.innerHTML = `
+                <div class="lead-story-placeholder">
+                    <div class="lead-story-kicker">Opening Bulletin</div>
+                    <h2>Preparing the newsroom opener</h2>
+                    <p>The desk is waiting for verified banking signals before publishing the lead bulletin.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const link = safeUrl(lead.link);
+        leadStoryCard.innerHTML = `
+            <div class="lead-story-content">
+                <div class="lead-story-top">
+                    ${lead.isLive ? '<span class="story-chip story-chip-live"><span class="live-dot"></span>LIVE DESK</span>' : `<span class="story-chip">${escapeHtml(lead.relativeLabel)}</span>`}
+                    <span class="story-chip">${escapeHtml(lead.source)}</span>
+                    <span class="story-chip">${escapeHtml(lead.impactType)}</span>
+                </div>
+                <div class="lead-story-kicker">Lead Bulletin</div>
+                <h2>${escapeHtml(lead.title)}</h2>
+                <p>${escapeHtml(lead.description)}</p>
+                <div class="lead-story-footer">
+                    <span>${escapeHtml(lead.date)} | ${escapeHtml(lead.relativeLabel)}</span>
+                    ${link !== '#' ? `<a href="${link}" target="_blank" rel="noopener noreferrer">Open source</a>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function rankForWatchlist(items) {
+        return [...items].sort((left, right) => {
+            const leftScore = (left.riskLevel === 'high' ? 3 : (left.riskLevel === 'moderate' ? 2 : 1)) + (left.isLive ? 1 : 0);
+            const rightScore = (right.riskLevel === 'high' ? 3 : (right.riskLevel === 'moderate' ? 2 : 1)) + (right.isLive ? 1 : 0);
+            if (rightScore !== leftScore) return rightScore - leftScore;
+            return right.rawDate - left.rawDate;
+        });
+    }
+
+    function renderWatchlist(items) {
+        if (!watchlistRail) return;
+        const watchItems = rankForWatchlist(items).slice(0, 4);
+
+        if (!watchItems.length) {
+            watchlistRail.innerHTML = '<div class="watchlist-empty">Lead risk and regulatory signals will appear here once the desk syncs.</div>';
+            return;
+        }
+
+        watchlistRail.innerHTML = watchItems.map((item, index) => `
+            <article class="watchlist-item">
+                <div class="watchlist-index">${String(index + 1).padStart(2, '0')}</div>
+                <div class="watchlist-copy">
+                    <div class="watchlist-topline">
+                        <span>${escapeHtml(item.riskLevel)} risk</span>
+                        <span>${escapeHtml(item.relativeLabel)}</span>
+                    </div>
+                    <a class="watchlist-link" href="${safeUrl(item.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    function renderTicker(items) {
+        if (!tickerContent) return;
+        const tickerItems = rankForWatchlist(items).slice(0, 6);
+        if (!tickerItems.length) {
+            tickerContent.innerHTML = `
+                <span class="ticker-pill">Awaiting live banking signals</span>
+                <span class="ticker-pill">RBI and market scan active</span>
+                <span class="ticker-pill">Cache desk standing by</span>
+            `;
+            return;
+        }
+
+        tickerContent.innerHTML = tickerItems.map((item) => `
+            <span class="ticker-pill">${escapeHtml(item.title)}</span>
+        `).join('');
+    }
+
+    function renderNews(items) {
+        if (!newsGrid) return;
+        const displayItems = items.slice(0, FEED_DISPLAY_LIMIT);
+
+        if (!displayItems.length) {
+            const note = LAST_NEWS_NOTE ? `<p class="news-empty-note">${escapeHtml(LAST_NEWS_NOTE)}</p>` : '';
+            const debug = (LAST_NEWS_DEBUG && LAST_NEWS_DEBUG.length)
+                ? `<details><summary>Debug</summary><div class="news-empty-note">${LAST_NEWS_DEBUG.map((attempt) => `${escapeHtml(attempt.url)} -> ${escapeHtml(attempt.error)}`).join('<br><br>')}</div></details>`
+                : '';
+            newsGrid.innerHTML = `
+                <div class="news-empty-state">
+                    <h3>No broadcast signals found</h3>
+                    <p>The newsroom could not find matching headlines for this view yet.</p>
+                    ${note}
+                    ${debug}
+                </div>
+            `;
+            return;
+        }
+
+        newsGrid.innerHTML = displayItems.map((item, index) => `
+            <article class="news-item" data-tone="${escapeHtml(item.riskLevel)}" style="animation-delay:${index * 70}ms;">
+                <div class="news-meta">
+                    <div class="source-badge">${escapeHtml(item.source)}</div>
+                    <div class="news-date">${escapeHtml(item.date)}</div>
+                    <div class="news-relative">${escapeHtml(item.relativeLabel)}</div>
+                </div>
+                <div class="news-content">
+                    <div class="story-topline">
+                        ${item.isLive ? '<div class="live-tag"><span class="live-dot"></span>LIVE BROADCAST</div>' : '<div class="live-tag" style="color: var(--antique-gold);"><span class="live-dot" style="background: var(--antique-gold); box-shadow:none; animation:none;"></span>RECENT SIGNAL</div>'}
+                        <span class="story-rank">Bulletin ${String(index + 1).padStart(2, '0')}</span>
+                    </div>
+                    <div class="story-tag-row">
+                        <span class="risk-pill risk-${escapeHtml(item.riskLevel)}">${escapeHtml(item.riskLevel)} risk</span>
+                        <span class="impact-tag">${escapeHtml(item.impactType)}</span>
+                    </div>
+                    <a href="${safeUrl(item.link)}" target="_blank" rel="noopener noreferrer" class="news-headline">${escapeHtml(item.title)}</a>
+                    <p class="summary-news">${escapeHtml(item.description)}</p>
+                    <div class="story-footer">
+                        <span>Desk source: ${escapeHtml(item.source)}</span>
+                        <a class="story-link" href="${safeUrl(item.link)}" target="_blank" rel="noopener noreferrer">Open source</a>
+                    </div>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    function updateDeskMetrics(items) {
+        const high = items.filter((item) => item.riskLevel === 'high').length;
+        const compliance = items.filter((item) => item.impactType.toLowerCase().includes('compliance')).length;
+        const liquidity = items.filter((item) => item.impactType.toLowerCase().includes('liquidity')).length;
+
+        if (highRiskCount) highRiskCount.textContent = String(high);
+        if (complianceCount) complianceCount.textContent = String(compliance);
+        if (liquidityCount) liquidityCount.textContent = String(liquidity);
+        if (leadSignalMix) leadSignalMix.textContent = `${high} risk | ${compliance} compliance | ${liquidity} liquidity`;
+        if (feedCountBadge) feedCountBadge.textContent = `${Math.min(items.length, FEED_DISPLAY_LIMIT)} stories on desk`;
+        if (newsTimestamp) newsTimestamp.textContent = formatDeskTimestamp(LAST_SYNCED_AT);
+        setHeartbeat(getFeedModeLabel());
+        setDeskNote(LAST_NEWS_NOTE || 'Arthashastra newsroom standing by.');
     }
 
     function renderCurrentNews() {
         const visible = filterVisibleNews(GLOBAL_NEWS);
         renderNews(visible);
+        renderLeadStory(visible);
+        renderWatchlist(visible);
+        renderTicker(visible);
+        updateDeskMetrics(visible);
+        if (editorialBrief) editorialBrief.textContent = buildDeskSummary(visible);
+        buildEditorialTags(visible);
+
         const queryText = ACTIVE_QUERY ? `Tracking "${ACTIVE_QUERY}"` : 'Tracking the broad Indian banking sector feed';
         const itemText = visible.length === 1 ? '1 signal' : `${visible.length} signals`;
         const note = LAST_NEWS_NOTE ? ` ${LAST_NEWS_NOTE}` : '';
         updateSearchStatus(`${queryText}. Showing ${itemText}.${note}`);
     }
 
-    async function runNewsSearch(query = '') {
-        ACTIVE_QUERY = (query || '').trim();
-        GLOBAL_NEWS = await fetchBankingNews(ACTIVE_QUERY);
+    async function runNewsSearch(query = '', options = {}) {
+        ACTIVE_QUERY = String(query || '').trim();
+        if (!ACTIVE_QUERY) {
+            setDeskNote('Syncing the Arthashastra live desk.');
+        }
+        GLOBAL_NEWS = await fetchBankingNews(ACTIVE_QUERY, options);
         renderCurrentNews();
     }
 
-    // --- 3. RENDERING ENGINE (BROADCAST STYLE) ---
-    function renderNews(items) {
-        if (!newsGrid) return;
-        const displayItems = items.slice(0, FEED_DISPLAY_LIMIT);
-        if (displayItems.length === 0) {
-            const note = LAST_NEWS_NOTE ? `<div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${escapeHtml(LAST_NEWS_NOTE)}</div>` : '';
-            const debug = (LAST_NEWS_DEBUG && LAST_NEWS_DEBUG.length)
-                ? `<details style="margin-top: 14px; text-align: left; display: inline-block; max-width: 820px;"><summary style="cursor: pointer; color: var(--text-secondary); font-weight: 800; letter-spacing: 1px;">DEBUG</summary><div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">${LAST_NEWS_DEBUG.map(a => `${escapeHtml(a.url)}<br><span style="opacity:0.9;">→ ${escapeHtml(a.error)}</span>`).join('<br><br>')}</div></details>`
-                : '';
-            const hint = LAST_NEWS_NOTE ? `<div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.9;">Tip: set <code style="background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 6px;">localStorage.arthashastra_backend_base</code> to your backend URL and click RESCAN.</div>` : '';
-            const localHint = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-                ? `<div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.9;">Local fix: start the backend in another terminal with <code style="background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 6px;">python3 app.py</code> (port 5050) and refresh.</div>`
-                : '';
-            newsGrid.innerHTML = `<div style="text-align: center; padding: 60px;">No broadcast signals found for this sector.${note}${hint}${localHint}${debug}</div>`;
-            if (highRiskCount) highRiskCount.textContent = '0';
-            if (complianceCount) complianceCount.textContent = '0';
-            if (liquidityCount) liquidityCount.textContent = '0';
-            return;
-        }
-        newsGrid.innerHTML = '';
-
-        // Update Statistics
-        let high = 0, comp = 0, liq = 0;
-
-        displayItems.forEach((item, index) => {
-            if (item.riskLevel === 'high') high++;
-            if (item.impactType.includes('Compliance')) comp++;
-            if (item.impactType.includes('Liquidity')) liq++;
-
-            const article = document.createElement('div');
-            article.className = 'news-item';
-            article.style.animationDelay = `${index * 0.15}s`;
-
-            const riskClass = `risk-${item.riskLevel}`;
-
-            article.innerHTML = `
-                <div class="news-meta">
-                    <div class="source-badge">${item.source}</div>
-                    <div style="font-weight: 900; font-size: 0.9rem; color: var(--text-secondary); margin-top: 10px;">${item.date}</div>
-                    <div style="font-size: 0.65rem; font-weight: 800; color: ${item.isLive ? 'var(--broadcast-red)' : 'var(--antique-gold)'}; margin-top: 4px; letter-spacing: 1px;">${item.relativeLabel}</div>
-                </div>
-                <div class="news-content">
-                    ${item.isLive ? '<div class="live-tag"><div class="live-dot"></div> LIVE BROADCAST</div>' : ''}
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
-                        <span class="risk-pill ${riskClass}">${item.riskLevel.toUpperCase()} RISK</span>
-                        <span class="impact-tag">${item.impactType.toUpperCase()}</span>
-                    </div>
-                    <a href="${item.link}" target="_blank" class="news-headline">${item.title}</a>
-                    <p class="summary-news">${item.description}</p>
-                </div>
-            `;
-            newsGrid.appendChild(article);
-        });
-
-        // Update Overlays
-        if (highRiskCount) highRiskCount.textContent = high;
-        if (complianceCount) complianceCount.textContent = comp;
-        if (liquidityCount) liquidityCount.textContent = liq;
-
-        // Update Ticker — show most recent high-risk or RBI items
-        const highRiskItems = displayItems.filter(i => i.riskLevel === 'high').concat(displayItems.filter(i => i.title.toLowerCase().includes('rbi')));
-        if (tickerContent && highRiskItems.length > 0) {
-            tickerContent.innerHTML = highRiskItems.map(i => ` <span style="color: var(--antique-gold);">●</span> ${i.title.toUpperCase()}`).join(' &nbsp;&nbsp;&nbsp;&nbsp; ');
-        }
-    }
-
-    // --- 4. RBI CIRCULARS (NEWS LIST STYLE) ---
     function renderCirculars() {
         if (!circularsList) return;
         const circulars = [
-            { id: 'RBI/2026/142', title: 'Master Direction on Foreign Investment', date: 'FEB 26', cat: 'PRUDENTIAL' },
-            { id: 'RBI/2026/138', title: 'Microfinance Loans Review', date: 'FEB 24', cat: 'LENDING' },
-            { id: 'RBI/2026/135', title: 'Basel III Capital Standards', date: 'FEB 20', cat: 'CAPITAL' },
-            { id: 'RBI/2026/131', title: 'Cyber Framework for Cooperative Banks', date: 'FEB 15', cat: 'SECURITY' }
+            { id: 'RBI/2026/142', title: 'Master Direction on Foreign Investment', date: 'Issued Feb 26', cat: 'Prudential' },
+            { id: 'RBI/2026/138', title: 'Microfinance Loans Review', date: 'Issued Feb 24', cat: 'Lending' },
+            { id: 'RBI/2026/135', title: 'Basel III Capital Standards', date: 'Issued Feb 20', cat: 'Capital' },
+            { id: 'RBI/2026/131', title: 'Cyber Framework for Cooperative Banks', date: 'Issued Feb 15', cat: 'Security' },
         ];
 
-        circularsList.innerHTML = circulars.map(c => `
-            <div class="circular-item">
-                <div style="font-size: 0.65rem; font-weight: 800; color: var(--antique-gold);">${c.id}</div>
-                <a href="#" style="text-decoration: none; color: var(--imperial-indigo); font-weight: 700; font-size: 1rem; display: block; margin: 5px 0;">${c.title}</a>
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">
-                    <span style="color: var(--text-secondary);">${c.date}</span>
-                    <span style="color: var(--high-risk);">${c.cat}</span>
+        circularsList.innerHTML = circulars.map((circular) => `
+            <article class="circular-item">
+                <div class="circular-meta">
+                    <span class="circular-id">${escapeHtml(circular.id)}</span>
+                    <span class="circular-cat">${escapeHtml(circular.cat)}</span>
                 </div>
-            </div>
+                <a href="#" class="circular-link">${escapeHtml(circular.title)}</a>
+                <div class="circular-date">${escapeHtml(circular.date)}</div>
+            </article>
         `).join('');
     }
 
-    // --- 5. HERALD ARCHIVE (CLEAN TABLE) ---
     function renderArchive() {
         if (!archiveBody) return;
         const archive = [
-            { date: 'DEC 12', title: 'KYC Enforcement Action', cat: 'RISK' },
-            { date: 'OCT 05', title: 'Agri-Loan Digitization', cat: 'AGRI' },
-            { date: 'SEP 15', title: 'Fair Lending Norms', cat: 'GOV' }
+            { date: 'DEC 12', title: 'KYC Enforcement Action', cat: 'Risk' },
+            { date: 'OCT 05', title: 'Agri-Loan Digitization', cat: 'Agri' },
+            { date: 'SEP 15', title: 'Fair Lending Norms', cat: 'Gov' },
         ];
 
-        archiveBody.innerHTML = archive.map(a => `
+        archiveBody.innerHTML = archive.map((item) => `
             <tr>
-                <td style="font-weight: 900; color: var(--imperial-indigo);">${a.date}</td>
-                <td style="color: var(--text-secondary);">${a.title}</td>
-                <td style="text-align: right;"><span class="impact-tag" style="padding: 2px 6px; font-size: 0.6rem;">${a.cat}</span></td>
+                <td class="archive-date">${escapeHtml(item.date)}</td>
+                <td class="archive-title">${escapeHtml(item.title)}</td>
+                <td style="text-align: right;"><span class="archive-tag">${escapeHtml(item.cat)}</span></td>
             </tr>
         `).join('');
     }
 
-    // --- 6. EVENT LISTENERS ---
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
-            // Clear cache to force fresh fetch on manual refresh
             localStorage.removeItem('banking_news_cache');
             localStorage.removeItem('banking_news_cache_time');
-            const query = bankSearch?.value || '';
-            await runNewsSearch(query);
+            setDeskNote('Manual refresh requested. Pulling the latest headlines.');
+            await runNewsSearch(bankSearch?.value || '', { forceRefresh: true });
         });
     }
 
@@ -415,24 +642,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (bankSearch) {
         bankSearch.addEventListener('input', () => {
-            clearTimeout(searchDebounce);
-            searchDebounce = setTimeout(() => {
-                runNewsSearch(bankSearch.value);
-            }, 450);
+            window.clearTimeout(searchDebounce);
+            searchDebounce = window.setTimeout(() => {
+                runNewsSearch(bankSearch.value, { forceRefresh: Boolean(bankSearch.value.trim()) });
+            }, 350);
         });
 
-        bankSearch.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
-            e.preventDefault();
-            clearTimeout(searchDebounce);
-            runNewsSearch(bankSearch.value);
+        bankSearch.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            window.clearTimeout(searchDebounce);
+            runNewsSearch(bankSearch.value, { forceRefresh: Boolean(bankSearch.value.trim()) });
         });
     }
 
-    // Initial Load
-    (async function init() {
-        await runNewsSearch();
+    (function init() {
         renderCirculars();
         renderArchive();
+
+        const cached = readCachedNews();
+        const cacheTime = Number(localStorage.getItem('banking_news_cache_time') || '0');
+        if (cached.length) {
+            GLOBAL_NEWS = cached;
+            LAST_FEED_SOURCE = 'cache';
+            LAST_SYNCED_AT = cacheTime ? new Date(cacheTime) : new Date();
+            LAST_NEWS_NOTE = 'Showing cached headlines while the live desk syncs.';
+            renderCurrentNews();
+        } else {
+            renderFeedSkeleton();
+            setDeskNote('Preparing the newsroom and connecting to live sources.');
+            if (newsTimestamp) newsTimestamp.textContent = 'Syncing live desk...';
+            setHeartbeat('Connecting to live desk');
+        }
+
+        void runNewsSearch('', { forceRefresh: true });
     })();
 });
