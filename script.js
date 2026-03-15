@@ -47,15 +47,63 @@ document.addEventListener('DOMContentLoaded', () => {
       .replaceAll("'", '&#039;');
   }
 
+  function normalizeBaseUrl(url) {
+    return String(url || '').trim().replace(/\/+$/, '');
+  }
+
+  function isLocalFrontend() {
+    return /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
+  }
+
   function getBackendBase() {
-    const stored = localStorage.getItem('arthashastra_backend_base');
+    const stored = normalizeBaseUrl(localStorage.getItem('arthashastra_backend_base'));
     if (stored) return stored;
-    // Production default (Render)
-    if (location.hostname.endsWith('vercel.app') || location.hostname.includes('arthashastra-ai')) {
-      // Update this if your Render service URL changes.
-      return 'https://arthashastra-ai-backend.onrender.com';
+
+    if (!isLocalFrontend()) {
+      // Primary Render service for the deployed frontend.
+      return 'https://ashstrashastra-backend.onrender.com';
     }
+
     return '';
+  }
+
+  function getBackendCandidates(pathname) {
+    const endpoint = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    const candidates = [];
+    const preferred = getBackendBase();
+    if (preferred) candidates.push(preferred);
+
+    if (!isLocalFrontend()) {
+      candidates.push('');
+      candidates.push('https://ashstrashastra-ai-backend.onrender.com');
+      candidates.push('https://arthashastra-ai-backend.onrender.com');
+    } else {
+      candidates.push('');
+      candidates.push('http://localhost:5050');
+      candidates.push('http://127.0.0.1:5050');
+      candidates.push('http://localhost:5000');
+      candidates.push('http://127.0.0.1:5000');
+    }
+
+    return [...new Set(candidates.map(normalizeBaseUrl))]
+      .map((base) => `${base}${endpoint}`);
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        const timeoutErr = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+        timeoutErr.name = 'TimeoutError';
+        throw timeoutErr;
+      }
+      throw err;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 
   function initMobileNav() {
@@ -99,22 +147,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileNav();
 
   async function postCaseAnalyze(formData) {
-    const candidates = [];
-    const base = getBackendBase();
-    if (base) candidates.push(base.replace(/\/+$/, '') + '/api/case/analyze');
-    candidates.push('/api/case/analyze');
-    candidates.push('http://localhost:5050/api/case/analyze');
-    candidates.push('http://127.0.0.1:5050/api/case/analyze');
-    // Common Flask dev default
-    candidates.push('http://localhost:5000/api/case/analyze');
-    candidates.push('http://127.0.0.1:5000/api/case/analyze');
+    const candidates = getBackendCandidates('/api/case/analyze');
+    const timeoutMs = isLocalFrontend() ? 25000 : 45000;
 
     let lastErr = null;
     let lastUrl = null;
     for (const url of candidates) {
       try {
         lastUrl = url;
-        const resp = await fetch(url, { method: 'POST', body: formData });
+        const resp = await fetchWithTimeout(url, { method: 'POST', body: formData }, timeoutMs);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return await resp.json();
       } catch (e) {
@@ -127,25 +168,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function postCopilotEvaluate(payload) {
-    const candidates = [];
-    const base = getBackendBase();
-    if (base) candidates.push(base.replace(/\/+$/, '') + '/api/copilot/evaluate');
-    candidates.push('/api/copilot/evaluate');
-    candidates.push('http://localhost:5050/api/copilot/evaluate');
-    candidates.push('http://127.0.0.1:5050/api/copilot/evaluate');
-    candidates.push('http://localhost:5000/api/copilot/evaluate');
-    candidates.push('http://127.0.0.1:5000/api/copilot/evaluate');
+    const candidates = getBackendCandidates('/api/copilot/evaluate');
+    const timeoutMs = isLocalFrontend() ? 8000 : 15000;
 
     let lastErr = null;
     let lastUrl = null;
     for (const url of candidates) {
       try {
         lastUrl = url;
-        const resp = await fetch(url, {
+        const resp = await fetchWithTimeout(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload || {}),
-        });
+        }, timeoutMs);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return await resp.json();
       } catch (e) {
@@ -1794,6 +1829,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const totalTime = ((aiPhases.length - 1) * aiPhaseDurationMs) + aiOverlayHoldMs;
 
       const minDelay = new Promise((resolve) => setTimeout(resolve, totalTime));
+      let analysisSettled = false;
+      const waitingPhaseTimer = window.setTimeout(() => {
+        if (analysisSettled) return;
+        setAIOverlayPhase(overlay, {
+          label: 'Waiting for live backend response',
+          sub: 'The deployed analyzer is finalizing its response. First requests on the hosted demo can take a little longer.',
+          progress: 100,
+          stageIndex: 2,
+          activeDocs: ['gst', 'itr', 'bank'],
+          activeSignals: ['risk', 'confidence'],
+        });
+      }, totalTime + 250);
 
       let cleaned = false;
       const cleanup = async () => {
@@ -1837,13 +1884,22 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           analysis = await postCaseAnalyze(formData);
         } catch (e) {
+          const recoveryHint = isLocalFrontend()
+            ? 'Start app.py locally or set arthashastra_backend_base to your deployed backend.'
+            : 'The deployed backend may be waking up, or the backend URL may have changed.';
+          const issue = e?.name === 'TimeoutError'
+            ? 'The analyzer did not respond in time.'
+            : 'The backend could not be reached.';
           const tried = e?._arthashastra_last_url ? ` Last tried: ${e._arthashastra_last_url}.` : '';
           notify({
             title: 'Extraction failed',
-            message: `The backend could not be reached. Start app.py locally or set arthashastra_backend_base to your deployed backend.${tried}`,
+            message: `${issue} ${recoveryHint}${tried}`,
             tone: 'error',
             timeoutMs: 7000,
           });
+        } finally {
+          analysisSettled = true;
+          window.clearTimeout(waitingPhaseTimer);
         }
 
         await minDelay;
@@ -1892,6 +1948,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (fatal) {
         console.error('AI overlay fatal error:', fatal);
       } finally {
+        analysisSettled = true;
+        window.clearTimeout(waitingPhaseTimer);
         await cleanup();
       }
     });
